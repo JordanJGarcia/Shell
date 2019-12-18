@@ -14,6 +14,8 @@
 #include <ctype.h>
 #include <readline/readline.h>
 #include <readline/history.h>
+#include <sys/wait.h>
+#include <sys/stat.h>
 
 /* global variables */
 char* cmd; 
@@ -24,13 +26,26 @@ int n_cmds = 0;
 #define PROMPT_SIZE 255
 #define N_TERM '\0'
 
-/* function prototypes */
+/* utility function prototypes */
 void    parse_input( char* );
 void    add_command( void );
 void    build_command( char ); 
 void    start_shell( void );
-void    process_commands( char** );
-void    print_commands( char** );
+void    process_commands( void );
+void    print_commands( void );
+
+/* helper function (low level) */
+int     is_directory( const char* );
+int     file_exists( const char* );
+
+/* command processing function prototypes */
+void    execute( void );
+void    execute_redirection( char ); /* char determines if its I/O redirection */
+void    execute_multiple_redirection( void );
+void    execute_pipe( void );
+
+
+
 
 
 /*********************************************************************/
@@ -148,7 +163,7 @@ void parse_input( char * line )
     }
 
     /* print out commands */
-    print_commands( cmds );
+    print_commands();
 
     return;
 } /* end split_input() */
@@ -213,9 +228,9 @@ void build_command( char c )
     int size = ( cmd == NULL ? 0 : strlen(cmd) );
 
     if( size > 0 )
-        cmd = realloc( cmd, (size + 2) * sizeof(char) );
+        cmd = (char*)realloc( cmd, (size + 2) * sizeof(char) );
     else
-        cmd = malloc( (size + 2) * sizeof(char) );
+        cmd = (char*)malloc( (size + 2) * sizeof(char) );
 
     cmd[size] = c;
     cmd[size + 1] = N_TERM;
@@ -236,6 +251,24 @@ void build_command( char c )
 /*********************************************************************/
 void process_commands( void )
 {
+    /* error checking */
+    if ( n_cmds == 0 )
+    {
+        fprintf( stderr, "No commands to process.\n" );
+        return;
+    }
+
+    // suggested order of processing: 
+
+    // check for aliases that need to be translated
+    // check for environment variables that need to be translated
+    // check for cd
+    // check for aliases that need to be added
+    // check for aliases that need to be removed
+    // check for input/output redirection
+    // check for pipes
+    // check for background processes
+
     return;
 }/* end process_commands */
 
@@ -244,15 +277,14 @@ void process_commands( void )
 /*                                                                   */
 /*      Function name: print_commands                                */
 /*      Return type:   void                                          */
-/*      Parameter(s):  1                                             */
-/*          char** commands: array of strings containing parsed line.*/
+/*      Parameter(s):  None                                          */
 /*                                                                   */
 /*      Description:                                                 */
 /*          Prints the array of strings containing the parsed        */
 /*          command line.                                            */
 /*                                                                   */
 /*********************************************************************/
-void print_commands( char** commands )
+void print_commands( void )
 {
     puts("Printing commands...");
     for ( int i = 0; i < n_cmds; i++ )
@@ -261,3 +293,44 @@ void print_commands( char** commands )
     return;
 }/* end print_commands() */
 
+
+/*********************************************************************/
+/*                                                                   */
+/*      Function name: is_directory                                  */
+/*      Return type:   int                                           */
+/*      Parameter(s):  1                                             */
+/*              const char*: directory name                          */
+/*                                                                   */
+/*      Description:                                                 */
+/*          determines if filename is a directory                    */
+/*                                                                   */
+/*********************************************************************/
+int is_directory( const char* filename )
+{
+    struct stat buffer;
+    if( stat( filename, &buffer ) != 0 )
+        return 0;
+    
+    return S_ISDIR( buffer.st_mode );
+}/* end is_directory() */
+
+
+/*********************************************************************/
+/*                                                                   */
+/*      Function name: file_exists                                   */
+/*      Return type:   int                                           */
+/*      Parameter(s):  1                                             */
+/*              const char*: file name                               */
+/*                                                                   */
+/*      Description:                                                 */
+/*          determines if file exists                                */
+/*                                                                   */
+/*********************************************************************/
+int file_exists( const char* fileName )
+{
+    struct stat buffer;
+    if( stat( fileName, &buffer ) != 0 )
+        return 0;
+
+    return S_ISREG( buffer.st_mode );
+}
