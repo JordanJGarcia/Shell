@@ -67,7 +67,7 @@ int main( void )
 /*      Return type:   alias*                                        */
 /*      Parameter(s):                                                */
 /*          char* og:   original values                              */
-/* 	        char* trns: translated values                            */
+/*          char* trns: translated values                            */
 /*                                                                   */
 /*********************************************************************/
 alias* add_alias( const char* og, char* trns )
@@ -158,7 +158,7 @@ alias* find_alias( const char* og )
 /*      Function name: parse_translated                              */
 /*      Return type:   char*                                         */
 /*      Parameter(s):                                                */
-/*      char* trns: translated alias value to separate           */
+/*      char* trns: translated alias value to separate               */
 /*                                                                   */
 /*********************************************************************/
 void parse_translated( const char* line )
@@ -277,22 +277,22 @@ void adjust_aliases( alias* found )
 /*********************************************************************/
 void print_aliases( void )
 {
-	int counter = 0;
+    int counter = 0;
 
-	while( counter != n_aliases )
-	{
-		puts( "***************************************************" );
-		printf( "Alias # %d: \n", counter + 1 );
-		printf( "Original:\t%s\n", alias_arr[counter].original );
-		printf( "Translated:\t" ); //, alias_arr[counter].translated );
-		for( int i = 0; i < alias_arr[counter].n_cmds; i++ )
-			printf( "%s ", alias_arr[counter].translated[i] );
+    while( counter != n_aliases )
+    {
+        puts( "***************************************************" );
+        printf( "Alias # %d: \n", counter + 1 );
+        printf( "Original:\t%s\n", alias_arr[counter].original );
+        printf( "Translated:\t" ); //, alias_arr[counter].translated );
+        for( int i = 0; i < alias_arr[counter].n_cmds; i++ )
+            printf( "%s ", alias_arr[counter].translated[i] );
 
-		puts( " " );
-		puts( "***************************************************" );
-		puts( " " );
-		counter++;
-	}
+        puts( " " );
+        puts( "***************************************************" );
+        puts( " " );
+        counter++;
+    }
 }
 
 /*********************************************************************/
@@ -369,29 +369,29 @@ void build_token( char c )
 /*                                                                   */
 /*      Function name: place_tokens                                  */
 /*      Return type:   void                                          */
-/*      Parameter(s):  none											 */
+/*      Parameter(s):  none                                          */
 /*                                                                   */
 /*********************************************************************/
 void place_tokens( void )
 {
-	/* place tokens into alias translated */
-	for( int i = 0; i < n_tokens; i++ )
-	{
-		if ( ( alias_arr[n_aliases].translated[i] = (char*) 
-			malloc( (strlen(trans[i]) + 1) * sizeof(char) ) ) == NULL )	
-		{
-			fprintf( stderr, "Error allocating memory for token." );
-			return;
-		}
-		strcpy( alias_arr[n_aliases].translated[i], trans[i] );
-		free(trans[i]);
-		trans[i] = NULL;
-	}
+    /* place tokens into alias translated */
+    for( int i = 0; i < n_tokens; i++ )
+    {
+        if ( ( alias_arr[n_aliases].translated[i] = (char*) 
+            malloc( (strlen(trans[i]) + 1) * sizeof(char) ) ) == NULL )	
+	    {
+            fprintf( stderr, "Error allocating memory for token." );
+            return;
+        }
+        strcpy( alias_arr[n_aliases].translated[i], trans[i] );
+        free(trans[i]);
+        trans[i] = NULL;
+    }
 
-	free( trans );
-	trans = NULL;
-	alias_arr[n_aliases].n_cmds = n_tokens;
-	n_tokens = 0; 
+    free( trans );
+    trans = NULL;
+    alias_arr[n_aliases].n_cmds = n_tokens;
+    n_tokens = 0; 
 
-	return;
+    return;
 }
