@@ -30,10 +30,10 @@ int     n_cmds = 0;
 #define N_TERM '\0'
 
 /* utility function prototypes */
+void    start_shell( void );
 void    parse_input( char* );
 void    add_command( void );
 void    build_command( char ); 
-void    start_shell( void );
 void    process_commands( void );
 void    print_commands( void );
 
@@ -47,6 +47,7 @@ void    execute_redirection( char ); /* char signals I|O redirection */
 void    execute_multiple_redirection( void );
 void    execute_pipe( void );
 void    echo_commands( void );
+void    check_for_alias( void );
 
 
 
@@ -56,7 +57,7 @@ void    echo_commands( void );
 /*      Return type:   int                                           */
 /*      Parameter(s):  None                                          */
 /*      Description:                                                 */
-/*          main() will start the shell prompt.                      */
+/*          main() will start the shell.                             */
 /*                                                                   */
 /*********************************************************************/
 int main( void )
@@ -102,7 +103,7 @@ void start_shell( void )
 
 
         if( cmds != NULL )
-            //process_commands( commands );
+            process_commands();
 
         free( line );
 
@@ -156,15 +157,24 @@ void parse_input( char * line )
 
             add_command();
         }
-        else if ( line[i] == '\"' ) /* printing string in quotes */
+        else if( line[i] == '=' )
         {
+            if( cmd != NULL )
+                add_command();
+
+            build_command( line[i] );
+            add_command();
+        }
+        else if ( line[i] == '\"' || line[i] == '\'' ) /* string in quotes */
+        {
+            char term = line[i];
             i++;
 
             // build command with everything inside quotes
             do
             {
                 build_command( line[i++] );
-            }while( line[i] != '\"' );
+            }while( line[i] != term );
 
             add_command();
         }
@@ -274,7 +284,16 @@ void process_commands( void )
 
     // suggested order of processing: 
 
-    // check for aliases that need to be translated
+    // handle all alias processing 
+    if ( strcmp( cmds[0], "alias" ) == 0 )
+        add_alias( cmds[1], cmds[3] );
+    else if ( strcmp( cmds[0], "show" ) == 0 && 
+        strcmp( cmds[1], "aliases" ) == 0 )
+    {
+        print_aliases();
+    }
+    else
+        check_for_alias();
     // check for environment variables that need to be translated
     // check for cd
     // check for aliases that need to be added
@@ -286,6 +305,30 @@ void process_commands( void )
     return;
 }/* end process_commands */
 
+
+/*********************************************************************/
+/*                                                                   */
+/*      Function name: check_for_alias                               */
+/*      Return type:   void                                          */
+/*      Parameter(s):  none                                          */
+/*                                                                   */
+/*      Description:                                                 */
+/*          checks for aliases and converts them if found            */
+/*                                                                   */
+/*********************************************************************/
+void check_for_alias( void ) 
+{
+    alias* a_ptr;
+    for( int i = 0; i < n_cmds; i++ )
+    {
+        if( (a_ptr = find_alias( cmds[i] )) != NULL )
+        {
+            //puts( "found an alias!" );
+            print_aliases();
+        }
+    }
+    return; 
+}
 
 
 /*********************************************************************/

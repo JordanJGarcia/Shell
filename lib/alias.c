@@ -222,6 +222,12 @@ void print_aliases( void )
 {
     int counter = 0;
 
+    if( n_aliases == 0 )
+    {
+        puts( "No aliases have been created." );
+        return;
+    }
+
     while( counter != n_aliases )
     {
         puts( "***************************************************" );
