@@ -66,8 +66,8 @@ int main( void )
 /*      Function name: add_alias                                     */
 /*      Return type:   alias*                                        */
 /*      Parameter(s):                                                */
-/* 			char* og: 	original value 								 */
-/* 			char* trns: translated values 							 */
+/* 			char* og: 	original value                               */
+/* 			char* trns: translated values                            */
 /*                                                                   */
 /*********************************************************************/
 alias* add_alias( const char* og, char* trns )
@@ -77,23 +77,23 @@ alias* add_alias( const char* og, char* trns )
 
 	if( n_aliases == ALIAS_LIMIT )
 	{
-		fprintf( stderr, "Maximum number of allowed aliases reached.\n" );
-		return NULL;
+        fprintf( stderr, "Maximum number of allowed aliases reached.\n" );
+        return NULL;
 	}
 
 	/* if alias already exists */
 	if( find_alias( og ) != NULL )
 	{
-		fprintf( stderr, "Alias already exists.\n" );
-		return NULL;
+        fprintf( stderr, "Alias already exists.\n" );
+        return NULL;
 	}
 
 	/* allocate memory to store original */
 	if ( ( alias_arr[n_aliases].original = (char*) 
 			malloc( (strlen( og ) + 1) * sizeof(char) ) ) == NULL )
 	{
-		fprintf( stderr, "Error allocating memory for alias." );
-		return alias_arr; 
+        fprintf( stderr, "Error allocating memory for alias." );
+        return alias_arr; 
 	}
 
 	strcpy( alias_arr[n_aliases].original, og );
@@ -102,8 +102,8 @@ alias* add_alias( const char* og, char* trns )
 	if ( ( alias_arr[n_aliases].translated = (char**) 
 			malloc( (n_tokens + 1) * sizeof(char*) ) ) == NULL )
 	{
-		fprintf( stderr, "Error allocating memory for alias." );
-		return alias_arr;
+        fprintf( stderr, "Error allocating memory for alias." );
+        return alias_arr;
 	}
 
 	/* place tokens into alias translated */
@@ -122,15 +122,15 @@ alias* add_alias( const char* og, char* trns )
 /*********************************************************************/
 alias* remove_alias( const char* og )
 {
-	alias* found = find_alias( og );
-	if( found == NULL )
-		return NULL;
+    alias* found = find_alias( og );
+    if( found == NULL )
+        return NULL;
 
-	alias* dummy = found; 
-	adjust_aliases( dummy );
-	n_aliases--;
+    alias* dummy = found; 
+    adjust_aliases( dummy );
+    n_aliases--;
 
-	return found;
+    return found;
 }
 
 
