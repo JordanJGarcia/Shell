@@ -17,10 +17,13 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 
+/* for aliases */
+#include "../lib/alias.h"
+
 /* global variables */
-char* cmd; 
-char** cmds; 
-int n_cmds = 0; 
+char*   cmd; 
+char**  cmds; 
+int     n_cmds = 0; 
 
 /* macros */
 #define PROMPT_SIZE 255
@@ -36,15 +39,14 @@ void    print_commands( void );
 
 /* helper function (low level) */
 int     is_directory( const char* );
-int     file_exists( const char* );
+int     is_reg_file( const char* );
 
 /* command processing function prototypes */
 void    execute( void );
-void    execute_redirection( char ); /* char determines if its I/O redirection */
+void    execute_redirection( char ); /* char signals I|O redirection */
 void    execute_multiple_redirection( void );
 void    execute_pipe( void );
-
-
+void    echo_commands( void );
 
 
 
@@ -151,6 +153,18 @@ void parse_input( char * line )
         {
             if( !isspace( line[i] ) )
                 build_command( line[i] );
+
+            add_command();
+        }
+        else if ( line[i] == '\"' ) /* printing string in quotes */
+        {
+            i++;
+
+            // build command with everything inside quotes
+            do
+            {
+                build_command( line[i++] );
+            }while( line[i] != '\"' );
 
             add_command();
         }
@@ -273,6 +287,30 @@ void process_commands( void )
 }/* end process_commands */
 
 
+
+/*********************************************************************/
+/*                                                                   */
+/*      Function name: echo_commands                                 */
+/*      Return type:   void                                          */
+/*      Parameter(s):  none                                          */
+/*                                                                   */
+/*      Description:                                                 */
+/*          mimics shell echo utility                                */
+/*                                                                   */
+/*********************************************************************/
+void echo_commands( void ) 
+{
+    return; 
+}
+
+
+
+/* LOW LEVEL FUNCTIONS START POINT */
+
+
+
+
+
 /*********************************************************************/
 /*                                                                   */
 /*      Function name: print_commands                                */
@@ -326,7 +364,7 @@ int is_directory( const char* filename )
 /*          determines if file exists                                */
 /*                                                                   */
 /*********************************************************************/
-int file_exists( const char* fileName )
+int is_reg_file( const char* fileName )
 {
     struct stat buffer;
     if( stat( fileName, &buffer ) != 0 )
