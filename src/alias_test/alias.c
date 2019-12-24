@@ -66,8 +66,8 @@ int main( void )
 /*      Function name: add_alias                                     */
 /*      Return type:   alias*                                        */
 /*      Parameter(s):                                                */
-/* 			char* og: 	original value                               */
-/* 			char* trns: translated values                            */
+/* 	        char* og: 	original value                               */
+/* 	        char* trns: translated values                            */
 /*                                                                   */
 /*********************************************************************/
 alias* add_alias( const char* og, char* trns )
@@ -75,39 +75,39 @@ alias* add_alias( const char* og, char* trns )
 	/* create an array of strings of trns */
 	parse_translated( trns );
 
-	if( n_aliases == ALIAS_LIMIT )
-	{
+    if( n_aliases == ALIAS_LIMIT )
+    {
         fprintf( stderr, "Maximum number of allowed aliases reached.\n" );
         return NULL;
-	}
+    }
 
-	/* if alias already exists */
-	if( find_alias( og ) != NULL )
-	{
+    /* if alias already exists */
+    if( find_alias( og ) != NULL )
+    {
         fprintf( stderr, "Alias already exists.\n" );
         return NULL;
-	}
+    }
 
-	/* allocate memory to store original */
-	if ( ( alias_arr[n_aliases].original = (char*) 
-			malloc( (strlen( og ) + 1) * sizeof(char) ) ) == NULL )
-	{
+    /* allocate memory to store original */
+    if ( ( alias_arr[n_aliases].original = (char*) 
+            malloc( (strlen( og ) + 1) * sizeof(char) ) ) == NULL )
+    {
         fprintf( stderr, "Error allocating memory for alias." );
         return alias_arr; 
-	}
+    }
 
-	strcpy( alias_arr[n_aliases].original, og );
+    strcpy( alias_arr[n_aliases].original, og );
 
-	/* allocate memory to store translated */
-	if ( ( alias_arr[n_aliases].translated = (char**) 
-			malloc( (n_tokens + 1) * sizeof(char*) ) ) == NULL )
-	{
+    /* allocate memory to store translated */
+    if ( ( alias_arr[n_aliases].translated = (char**) 
+            malloc( (n_tokens + 1) * sizeof(char*) ) ) == NULL )
+    {
         fprintf( stderr, "Error allocating memory for alias." );
         return alias_arr;
-	}
+    }
 
-	/* place tokens into alias translated */
-	place_tokens();
+    /* place tokens into alias translated */
+    place_tokens();
 
     return &alias_arr[n_aliases++];
 }
