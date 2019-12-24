@@ -37,25 +37,25 @@ void 	place_tokens( void );
 
 int main( void )
 {
-	add_alias( "ll", "ls -i" );
-	add_alias( "lrt", "ls -l -r -t" );
-	add_alias( "rm" , "rm -i" );
-	add_alias( "tsrc", "cd /t/s/r/c" );
-	add_alias( "dsrc", "cd /d/s/r/c" );
-	print_aliases();
+    add_alias( "ll", "ls -i" );
+    add_alias( "lrt", "ls -l -r -t" );
+    add_alias( "rm" , "rm -i" );
+    add_alias( "tsrc", "cd /t/s/r/c" );
+    add_alias( "dsrc", "cd /d/s/r/c" );
+    print_aliases();
 
-	alias* found = find_alias("ll");
+    alias* found = find_alias("ll");
 
-	if( found != NULL )
-		puts( "alias found!" );
+    if( found != NULL )
+        puts( "alias found!" );
 
-	//printf("found.translated = %s\n\n", found->translated );
+    //printf("found.translated = %s\n\n", found->translated );
 
-	printf( "attempting to remove ll\n" );
-	remove_alias( "ll" );
-	printf( "attempting to remove tsrc\n" );
-	remove_alias( "tsrc" );
-	print_aliases();
+    printf( "attempting to remove ll\n" );
+    remove_alias( "ll" );
+    printf( "attempting to remove tsrc\n" );
+    remove_alias( "tsrc" );
+    print_aliases();
 
 
     return EXIT_SUCCESS;
@@ -66,14 +66,14 @@ int main( void )
 /*      Function name: add_alias                                     */
 /*      Return type:   alias*                                        */
 /*      Parameter(s):                                                */
-/* 	        char* og: 	original value                               */
+/*          char* og:   original values                              */
 /* 	        char* trns: translated values                            */
 /*                                                                   */
 /*********************************************************************/
 alias* add_alias( const char* og, char* trns )
 {	
-	/* create an array of strings of trns */
-	parse_translated( trns );
+    /* create an array of strings of trns */
+    parse_translated( trns );
 
     if( n_aliases == ALIAS_LIMIT )
     {
@@ -139,17 +139,17 @@ alias* remove_alias( const char* og )
 /*      Function name: find_alias                                    */
 /*      Return type:   alias*                                        */
 /*      Parameter(s):                                                */
-/*			char* og: alias to find 								 */
+/*      char* og:  alias to find                                     */
 /*                                                                   */
 /*********************************************************************/
 alias* find_alias( const char* og )
 {
-	for( int i = 0; i < n_aliases; i++ )
-	{
-		if( strcmp( og, alias_arr[i].original ) == 0 )
-			return &alias_arr[i];
-	}
-	return NULL;
+    for( int i = 0; i < n_aliases; i++ )
+    {
+        if( strcmp( og, alias_arr[i].original ) == 0 )
+            return &alias_arr[i];
+    }
+    return NULL;
 }
 
 
@@ -158,15 +158,15 @@ alias* find_alias( const char* og )
 /*      Function name: parse_translated                              */
 /*      Return type:   char*                                         */
 /*      Parameter(s):                                                */
-/*			char* trns: translated alias value to separate 		     */
+/*      char* trns: translated alias value to separate           */
 /*                                                                   */
 /*********************************************************************/
 void parse_translated( const char* line )
 {
-	int line_size = strlen( line );
+    int line_size = strlen( line );
 
     for( int i = 0; i < line_size; i++ )
-    {
+    {   
         if ( i == line_size - 1 ) /* end of line */
         {
             if( !isspace( line[i] ) )
@@ -175,12 +175,11 @@ void parse_translated( const char* line )
             add_cmd();
         }
         else if ( isspace( line[i] ) ) /* spacing */
-            add_cmd();
+            add_cmd(); 
         else /* everything else */
             build_token( line[i] );
     }
-
-	return;
+    return;
 }
 
 
@@ -189,85 +188,84 @@ void parse_translated( const char* line )
 /*      Function name: adjust_aliases                                */
 /*      Return type:   alias*                                        */
 /*      Parameter(s):                                                */
-/*			char* found: starting point to move values down 		 */
+/*          char* found: starting point to move values down          */
 /*                                                                   */
 /*********************************************************************/
 void adjust_aliases( alias* found )
 {
-	/* move all values down one index in the array */
-	for( ; found != &alias_arr[n_aliases-1]; found++ )
-	{
-		/* replace original with next original */
-		free( found->original );
-		found->original = NULL;
+    /* move all values down one index in the array */
+    for( ; found != &alias_arr[n_aliases-1]; found++ )
+    {
+        /* replace original with next original */
+        free( found->original );
+        found->original = NULL;
 
-		if( (found->original = (char*) malloc(
-				(strlen((found+1)->original)) * sizeof(char))) == NULL
-		  )
-		{
-			fprintf( stderr,
-				 "Error allocating memory for alias->original \
-				  in adjustment" );
-			return;
-		}
+        if( (found->original = (char*) malloc(
+            (strlen((found+1)->original)) * sizeof(char))) == NULL
+          )
+        {
+            fprintf( stderr,
+                "Error allocating memory for alias->original \
+                in adjustment" );
+            return;
+        }
 
-		/* copy original value */
-		strcpy( found->original, (found+1)->original );
+        /* copy original value */
+        strcpy( found->original, (found+1)->original );
 
-		/* replace translated with next translated */
-		for( int i = 0; i < found->n_cmds; i++ )
-		{
-			free( found->translated[i] );
-			found->translated[i] = NULL;
-		}
+        /* replace translated with next translated */
+        for( int i = 0; i < found->n_cmds; i++ )
+        {
+            free( found->translated[i] );
+            found->translated[i] = NULL;
+        }
 
-		free( found->translated );
-		found->translated = NULL;
+        free( found->translated );
+        found->translated = NULL;
 
-		if( (found->translated = (char**) malloc(
-				((found+1)->n_cmds) * sizeof(char*))) == NULL
-		  )
-		{
-			fprintf( stderr,
-				 "Error allocating memory for alias->translated \
-				  in adjustment" );
-			return;
-		}		
+        if( (found->translated = (char**) malloc(
+            ((found+1)->n_cmds) * sizeof(char*))) == NULL
+          )
+        {
+            fprintf( stderr,
+                "Error allocating memory for alias->translated \
+                in adjustment" );
+            return;
+        }		
 
-		/* copy commands down an index */
-		for( int i = 0; i < (found+1)->n_cmds; i++ )
-		{
-			//free( found->translated[i] );
-			if ( (found->translated[i] = (char*) malloc( 
-					strlen((found+1)->translated[i]) + 1 )) == NULL
-			   ) 
-			{
-				fprintf( stderr, 
-					"Error allocating memory in adjustment\n" );
+        /* copy commands down an index */
+        for( int i = 0; i < (found+1)->n_cmds; i++ )
+        {
+            //free( found->translated[i] );
+            if ( (found->translated[i] = (char*) malloc( 
+                    strlen((found+1)->translated[i]) + 1 )) == NULL
+               ) 
+            {
+                fprintf( stderr, 
+                    "Error allocating memory in adjustment\n" );
 
-				return;
-			}
+                return;
+            }
+            strcpy( found->translated[i], (found+1)->translated[i] );
+        }
 
-			strcpy( found->translated[i], (found+1)->translated[i] );
-		}
+        /* adjust n_cmds */
+        found->n_cmds = (found+1)->n_cmds;
+    }
 
-		/* adjust n_cmds */
-		found->n_cmds = (found+1)->n_cmds;
-	}
+    /* free up memory of last element */
+    free( found->original );
+    for( int i = 0; i < found->n_cmds; i++ )
+    {
+        free( found->translated[i] );
+        found->translated[i] = NULL;
+    }
 
-	/* free up memory of last element */
-	free( found->original );
-	for( int i = 0; i < found->n_cmds; i++ )
-	{
-		free( found->translated[i] );
-		found->translated[i] = NULL;
-	}
+    free( found->translated );
+    found->original = NULL;
+    found->translated = NULL;
 
-	free( found->translated );
-	found->original = NULL;
-	found->translated = NULL;
-
-	return;
+    return;
 }
 
 /*********************************************************************/
