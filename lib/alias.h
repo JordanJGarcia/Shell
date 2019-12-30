@@ -5,8 +5,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include "string_module.h"
 
-#define ALIAS_LIMIT 75
+#define ALIAS_LIMIT 100
 
 /* structure to hold alias values */
 typedef struct alias_h
@@ -16,9 +17,10 @@ typedef struct alias_h
     int 	n_cmds;
 } alias;
 
-/* global variable to hold translated alias */
-char** 	trans;
-char* 	token; 
+/* global variables */
+char** 			trans;
+char* 			token; 	
+extern int		n_cmds;
 
 /* global variable to hold aliases */
 alias alias_arr[ALIAS_LIMIT];
@@ -30,8 +32,8 @@ alias*  remove_alias( const char* );
 void 	parse_translated( const char* );
 void 	adjust_aliases( alias* found );
 void 	print_aliases( void );
-void 	add_cmd( void );
-void 	build_token( char c );
 void 	place_tokens( void );
+
+// add qsort & bsearch to here so you can store more aliases
 
 #endif

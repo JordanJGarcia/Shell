@@ -17,24 +17,28 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 
-/* for aliases */
+/* for custom libraries */
 #include "../lib/alias.h"
+#include "../lib/string_module.h"
 
 /* global variables */
-char*   cmd; 
-char**  cmds; 
+char*   cmd = NULL; 
+char**  cmds = NULL; 
 int     n_cmds = 0; 
 
 /* macros */
 #define PROMPT_SIZE 255
 #define N_TERM '\0'
+#define FAILURE 0
+#define SUCCESS 1
+#define T 1
+#define F 0
 
 /* utility function prototypes */
 void    start_shell( void );
 void    parse_input( char* );
-void    add_command( void );
-void    build_command( char ); 
-void    process_commands( void );
+//void    add_command( void );
+int     process_commands( void );
 void    print_commands( void );
 
 /* helper function (low level) */
@@ -47,7 +51,7 @@ void    execute_redirection( char ); /* char signals I|O redirection */
 void    execute_multiple_redirection( void );
 void    execute_pipe( void );
 void    echo_commands( void );
-void    check_for_alias( void );
+int     check_for_alias( void );
 
 
 
@@ -96,18 +100,25 @@ void start_shell( void )
         line = readline(prompt);
 
         /* check if user wants to exit the shell */
-        if( strcmp( line, "exit" ) == 0 )
+        if ( strcmp( line, "exit" ) == 0 )
+        {
+            puts( "Now exiting the best shell ever created... :(\n" );
             return;
+        }
         else
             parse_input( line );
 
 
-        if( cmds != NULL )
-            process_commands();
+        if ( cmds != NULL )
+            if ( process_commands() == FAILURE )
+            {
+                fprintf( stderr, "Error processing commands. Continuing program \
+                        execution. Type \"exit\" to leave shell.\n" );
+            }
 
         free( line );
 
-        for( int i = 0; i < n_cmds; i++ )
+        for ( int i = 0; i < n_cmds; i++ )
             free( cmds[i] );
 
         free( cmds );
@@ -145,25 +156,25 @@ void parse_input( char * line )
         {
             //puts( "Found special character!" );
             if( cmd != NULL )
-                add_command();
+                add_string( &cmd, &cmds, &n_cmds );
 
-            build_command( line[i] );
-            add_command();
+            build_string( line[i], &cmd );
+            add_string( &cmd, &cmds, &n_cmds );
         }
         else if ( i == line_size - 1 ) /* end of line */
         {
             if( !isspace( line[i] ) )
-                build_command( line[i] );
+                build_string( line[i], &cmd );
 
-            add_command();
+            add_string( &cmd, &cmds, &n_cmds );
         }
         else if( line[i] == '=' )
         {
             if( cmd != NULL )
-                add_command();
+                add_string( &cmd, &cmds, &n_cmds );
 
-            build_command( line[i] );
-            add_command();
+            build_string( line[i], &cmd );
+            add_string( &cmd, &cmds, &n_cmds );
         }
         else if ( line[i] == '\"' || line[i] == '\'' ) /* string in quotes */
         {
@@ -173,21 +184,28 @@ void parse_input( char * line )
             // build command with everything inside quotes
             do
             {
-                build_command( line[i++] );
+                /* if user forgot end quote, continue */
+                if( i == line_size - 1 )
+                {
+                    build_string( line[i], &cmd );
+                    break;
+                }
+
+                build_string( line[i++], &cmd );
             }while( line[i] != term );
 
-            add_command();
+            add_string( &cmd, &cmds, &n_cmds );
         }
         else if ( isspace( line[i] ) ) /* spacing */
-            add_command();
+            add_string( &cmd, &cmds, &n_cmds );
         else /* everything else */
-            build_command( line[i] ); 
+            build_string( line[i], &cmd ); 
 
         //free( command );
     }
 
     /* print out commands */
-    print_commands();
+    //print_commands();
 
     return;
 } /* end split_input() */
@@ -195,91 +213,21 @@ void parse_input( char * line )
 
 /*********************************************************************/
 /*                                                                   */
-/*      Function name: add_command                                   */
-/*      Return type:   void                                          */
-/*      Parameter(s):  none                                          */
-/*                                                                   */
-/*********************************************************************/
-void add_command( void )
-{
-    /* if there hasn't been a command initialized */
-    if( cmd == NULL )
-        return;
-
-    /* allocate memory to add new string to array */
-    if( n_cmds == 0 )
-        cmds = (char**)malloc( sizeof(char*) );
-    else
-        cmds = (char**)realloc( cmds, (n_cmds + 1) 
-                                    * sizeof(char*) );
-
-    /* allocate memory for the actual string in the array */
-    cmds[n_cmds] = (char*)malloc( strlen(cmd) + 1 );
-    strcpy( cmds[n_cmds], cmd );
-
-    /* increase command count */
-    n_cmds += 1;
-
-    /* allocate memory to add null term */
-    cmds = (char**)realloc( cmds, (n_cmds + 1) * 
-                                sizeof(char*) );
-
-    /* last element set to NULL for execv() to work */
-    cmds[n_cmds] = NULL;
-
-    /* free up memory */
-    free( cmd );
-    cmd = NULL;
-
-    return;
-}/* end add_command() */
-
-
-/*********************************************************************/
-/*                                                                   */
-/*      Function name: build_command                                 */
-/*      Return type:   char*                                         */
-/*      Parameter(s):  1                                             */
-/*          char c: char to add to command                           */
-/*                                                                   */
-/*      Description:                                                 */
-/*          build_command accepts a character and appends it to the  */
-/*          string "cmd." It creates a string one letter at a time.  */
-/*                                                                   */
-/*********************************************************************/
-void build_command( char c )
-{
-    int size = ( cmd == NULL ? 0 : strlen(cmd) );
-
-    if( size > 0 )
-        cmd = (char*)realloc( cmd, (size + 2) * sizeof(char) );
-    else
-        cmd = (char*)malloc( (size + 2) * sizeof(char) );
-
-    cmd[size] = c;
-    cmd[size + 1] = N_TERM;
- 
-    return;
-}/* end build_command() */
-
-
-/*********************************************************************/
-/*                                                                   */
 /*      Function name: process_commands                              */
-/*      Return type:   void                                          */
+/*      Return type:   int                                           */
 /*      Parameter(s):  none                                          */
 /*                                                                   */
 /*      Description:                                                 */
 /*          Accepts parsed commands for appropriate processing       */
 /*                                                                   */
 /*********************************************************************/
-void process_commands( void )
+int process_commands( void )
 {
     /* error checking */
     if ( n_cmds == 0 )
     {
         fprintf( stderr, "No commands to process.\n" );
-        return;
+        return FAILURE;
     }
 
     // suggested order of processing: 
@@ -287,6 +235,8 @@ void process_commands( void )
     // handle all alias processing 
     if ( strcmp( cmds[0], "alias" ) == 0 )
         add_alias( cmds[1], cmds[3] );
+    else if ( strcmp( cmds[0], "unalias" ) == 0 )
+        remove_alias( cmds[1] );
     else if ( strcmp( cmds[0], "show" ) == 0 && 
         strcmp( cmds[1], "aliases" ) == 0 )
     {
@@ -294,15 +244,19 @@ void process_commands( void )
     }
     else
         check_for_alias();
+
+    //print_commands();
     // check for environment variables that need to be translated
     // check for cd
-    // check for aliases that need to be added
+        // will probably have to create a stack to track directories
+
+    // DONE - check for aliases that need to be added
     // check for aliases that need to be removed
     // check for input/output redirection
     // check for pipes
     // check for background processes
 
-    return;
+    return SUCCESS;
 }/* end process_commands */
 
 
@@ -316,18 +270,31 @@ void process_commands( void )
 /*          checks for aliases and converts them if found            */
 /*                                                                   */
 /*********************************************************************/
-void check_for_alias( void ) 
+int check_for_alias( void ) 
 {
     alias* a_ptr;
+    char result = 'U'; //undetermined 
+
     for( int i = 0; i < n_cmds; i++ )
     {
-        if( (a_ptr = find_alias( cmds[i] )) != NULL )
+        if( ( a_ptr = find_alias( cmds[i] ) ) != NULL )
         {
-            //puts( "found an alias!" );
-            print_aliases();
+            puts( "Found an alias!" );
+
+            move_strings_down( &cmds, &n_cmds, a_ptr->n_cmds, i );
+            puts( "Adjusted string to add alias." );
+            print_commands();
+
+            /* replace alias in cmds */
+            add_strings( &cmds, &(a_ptr->translated), i, a_ptr->n_cmds, T );
+            puts( "Commands with replaced alias" );
+            print_commands();
+
+            return SUCCESS; 
         }
     }
-    return; 
+
+    return FAILURE; 
 }
 
 
@@ -368,7 +335,7 @@ void echo_commands( void )
 void print_commands( void )
 {
     puts("Printing commands...");
-    for ( int i = 0; i < n_cmds; i++ )
+    for ( int i = 0; i <= n_cmds; i++ )
         printf( "command %d: %s\n", i, cmds[i] );
 
     return;
