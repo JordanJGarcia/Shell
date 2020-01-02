@@ -10,7 +10,7 @@
 #define ALIAS_LIMIT 100
 
 /* structure to hold alias values */
-typedef struct alias_h
+typedef struct alias_t
 {
     char* 	original;
     char** 	translated;

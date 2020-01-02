@@ -67,7 +67,10 @@ alias* remove_alias( const char* og )
 {
     alias* found = find_alias( og );
     if ( found == NULL )
+    {
+        fprintf( stderr, "Error. Alias does not exist.\n" );
         return NULL;
+    }
 
     alias* dummy = found; 
     adjust_aliases( dummy );
@@ -220,7 +223,9 @@ void adjust_aliases( alias* found )
 /*********************************************************************/
 void print_aliases( void )
 {
+    puts( " " );
     int counter = 0;
+    int trans_counter = 0;
 
     if ( n_aliases == 0 )
     {
@@ -230,6 +235,7 @@ void print_aliases( void )
 
     while ( counter != n_aliases )
     {
+        /*
         puts( "***************************************************" );
         printf( "Alias # %d: \n", counter + 1 );
         printf( "Original:\t%s\n", alias_arr[counter].original );
@@ -240,8 +246,18 @@ void print_aliases( void )
         puts( " " );
         puts( "***************************************************" );
         puts( " " );
+        */
+
+        printf( "alias\t%s\t", alias_arr[counter].original );
+        for( trans_counter = 0; trans_counter < alias_arr[counter].n_cmds; 
+             trans_counter++ )
+        {
+            printf( "%s ", alias_arr[counter].translated[trans_counter] );
+        }
+        puts( " " );
         counter++;
     }
+    puts( " " );
 }
 
 

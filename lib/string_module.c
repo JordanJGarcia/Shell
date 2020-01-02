@@ -21,8 +21,9 @@ int build_string( char c, char** cmd )
 
     if ( size > 0 )
     {
-        if ( ((*cmd) = (char*)realloc( *cmd, (size + 2) * sizeof(char)) 
-             ) == NULL )
+        if ( ((*cmd) = (char*)realloc( *cmd, (size + 2) * 
+                                        sizeof(char) ) ) == NULL 
+           )
             return FAILURE;
     }
     else
@@ -116,75 +117,56 @@ int add_string( char** str, char*** arr, int* str_count )
 /*          removes the string *arr[start] from the array.           */
 /*                                                                   */
 /*********************************************************************/
-int move_strings_down( char*** arr, int* arr_size, int n_indices, 
+int move_strings_down( char*** arr, int* arr_size, int add_arr_size, 
                        int start )
 {
-    int new_arr_size = *arr_size + n_indices;
-    int old_arr_size = *arr_size - 1;
-    int stop = start + n_indices;
-    int end_freeable_mem = ( stop < *arr_size ? stop : *arr_size );
-    int end_null_mem = new_arr_size - *arr_size + start;
+    /* subtract 1 to account for the 2 NULLs (1 per array) */
+    int new_size = *arr_size + add_arr_size - 1;
+    int next_elem = *arr_size - 1;
+    int last_elem = start + 1; 
+    int spaces_to_move = add_arr_size - 1;
+    int new_spot; 
+    int stop_cleaning_mem = start + add_arr_size;
 
-    /* error allocating memory for array */
-    if ( (*arr = (char**) realloc( *arr, (new_arr_size)
-                * sizeof(char*) ) ) == NULL 
+    /* allocate memory for new array */
+    if ( (*arr = (char**) realloc( *arr, (new_size + 1)
+                            * sizeof(char*) ) ) == NULL 
        )
         return FAILURE; 
 
-    /* if the array only has one string to move */
-    if ( *arr_size == 1 )
+    /* copy all next elements down to new indices */
+    for ( ; next_elem >= last_elem; next_elem-- )
     {
-        free( (*arr)[old_arr_size] );
-        while( old_arr_size <= stop )
-            (*arr)[old_arr_size++] = NULL;
+        new_spot = next_elem + spaces_to_move;
 
-        /* adjust arr size */
-        *arr_size = new_arr_size - 1;
+        /* test if memory is not freed */
+        if( new_spot < *arr_size - 1 )
+            free( (*arr)[new_spot] );
 
-        return SUCCESS;
-    }
+        (*arr)[new_spot] = (char*) malloc( 
+                ( strlen((*arr)[next_elem]) + 1 ) * sizeof(char) ); 
 
-    /* put strings in new indices */
-    for( ; old_arr_size != start; old_arr_size-- )
-    {
-        /* clean up old memory */
-        if ( old_arr_size + n_indices - 1 <= *arr_size - 1 )
-        {
-            free( (*arr)[old_arr_size + n_indices - 1] );
-            (*arr)[old_arr_size + n_indices] = NULL;
-        }
-
-        /* adjust memory for new string */
-        (*arr)[old_arr_size + n_indices - 1] = (char*) malloc(
-                ( strlen( (*arr)[old_arr_size] ) + 1 ) *
-                sizeof(char) ); 
-
-        /* error allocating memory */
-        if ( (*arr)[old_arr_size + n_indices - 1] == NULL )
+        /* memory allocation error */
+        if( (*arr)[new_spot] == NULL )
             return FAILURE; 
 
-        /* copy string into new location */
-        strcpy( (*arr)[old_arr_size + n_indices - 1], 
-                (*arr)[old_arr_size] );
+        strcpy( (*arr)[new_spot], (*arr)[next_elem] );
     }
 
-    /* remove strings from old locations */
-    while( start < end_freeable_mem )
+    /* clear up old memory and set nulls */
+    for ( ; start < stop_cleaning_mem; start++ )
     {
-        free( (*arr)[start] );
-        (*arr)[start++] = NULL;   
+        if ( start < *arr_size )
+            free( (*arr)[start] );
+
+        (*arr)[start] = NULL;
     }
 
-    while( start < end_null_mem )
-        (*arr)[start++] = NULL;
-
-    /* adjust arr size */
-    *arr_size = new_arr_size - 1;
-
-    /* make end of array null */
+    /* set new size & last elem to null */
+    *arr_size = new_size; 
     (*arr)[*arr_size] = NULL;
 
-    return SUCCESS;
+    return SUCCESS; 
 } /* end move_strings_down() */
 
 
@@ -195,19 +177,16 @@ int move_strings_down( char*** arr, int* arr_size, int n_indices,
 /*      Parameter(s):                                                */
 /*          char*** to: pointer to array we are adjusting.           */
 /*          char*** from: pointer to array of strings we are adding. */
-/*          int* to_size: size of arr to.                            */
 /*          int start: index to start placing strings.               */
 /*          int n_indices: num indices to copy to.                   */
-/*          int alias: T/F value to determine if we are replacing    */
-/*                     an alias.                                     */
 /*                                                                   */
 /*      Description:                                                 */
 /*          moves strings from start onwards down n_indices in arr.  */
 /*                                                                   */
 /*********************************************************************/
-int add_strings( char*** to, char*** from, int start, 
-                 int n_indices, int alias )
+int add_strings( char*** to, char*** from, int start, int n_indices )
 {
+    puts( "In add_strings..." );
     int stop = start + n_indices; 
     int ind = 0;
 
