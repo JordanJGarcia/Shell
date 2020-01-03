@@ -37,18 +37,17 @@ int     n_cmds = 0;
 void    start_shell( void );
 void    parse_input( char* );
 int     process_commands( void );
-void    print_commands( void );
 
 /* helper function (low level) */
 int     is_directory( const char* );
 int     is_reg_file( const char* );
+void    print_commands( void );
 
 /* command processing function prototypes */
 void    execute( void );
 void    execute_redirection( char ); /* char signals I|O redirection */
 void    execute_multiple_redirection( void );
 void    execute_pipe( void );
-void    echo_commands( void );
 
 /* alias handling */
 int     handle_aliases( void );
@@ -59,9 +58,14 @@ int     handle_env_vars( void );
 int     convert_env_var( int );
 
 /* directory change handling */
-char*   get_parent_dir( void );
+char*   get_parent_dir( int );
 int     handle_directory_change( void );
 char*   set_new_dir( void );
+int     count_parents( const char* );
+char*   get_last_parent( const char* str );
+
+/* echo handling */
+int     handle_echo( void );
 
 
 
@@ -192,32 +196,37 @@ void parse_input( char * line )
             char term = line[i];
             i++;
 
-            // build command with everything inside quotes
+            /* build command with everything inside quotes */
             do
             {
                 /* if user forgot end quote, continue */
-                if( i == line_size - 1 )
+                if ( i == line_size - 1 )
                 {
                     build_string( line[i], &cmd );
                     break;
-                }
-
+                } 
                 build_string( line[i++], &cmd );
+
             }while( line[i] != term );
 
+            //parse_input( cmd );
             add_string( &cmd, &cmds, &n_cmds );
         }
         else if ( isspace( line[i] ) ) /* spacing */
             add_string( &cmd, &cmds, &n_cmds );
+        else if ( ispunct( line[i] ) ) /* punctuation */
+        {
+            if ( cmd != NULL )
+                add_string( &cmd, &cmds, &n_cmds );
+
+            build_string( line[i], &cmd );
+            add_string( &cmd, &cmds, &n_cmds );
+        }
         else /* everything else */
             build_string( line[i], &cmd ); 
-
-        //free( command );
     }
-
     /* print out commands */
-    print_commands();
-
+    //print_commands();
     return;
 } /* end split_input() */
 
@@ -241,26 +250,25 @@ int process_commands( void )
         return FAILURE;
     }
 
-    puts( "processing commands..." );
     // suggested order of processing: 
 
     // handle all alias processing 
     handle_aliases();
 
-    // check for environment variables that need to be translated
+    // handle environmental variable translations
     handle_env_vars();
 
-    // check for cd
+    // handle directory changes
     handle_directory_change(); 
-        // will probably have to create a stack to track directories
 
-    // DONE - check for aliases that need to be added
-    // check for aliases that need to be removed
+    // handle echo command 
+    handle_echo(); 
+        
     // check for input/output redirection
     // check for pipes
     // check for background processes
 
-    print_commands();
+    //print_commands();
     return SUCCESS;
 }/* end process_commands */
 
@@ -313,6 +321,129 @@ int handle_aliases( void )
 
 /*********************************************************************/
 /*                                                                   */
+/*      Function name: handle_env_vars                               */
+/*      Return type:   int                                           */
+/*      Parameter(s):  none                                          */
+/*                                                                   */
+/*      Description:                                                 */
+/*          checks for environmental variables and calls conversion  */
+/*          function.                                                */
+/*                                                                   */
+/*********************************************************************/
+int handle_env_vars( void )
+{
+    int counter = 0; 
+
+    for( ; counter < n_cmds; counter++ )
+    {
+        /* if we find a possible environmental variable */
+        if( strcmp( cmds[counter], "$" ) == 0 )
+            if ( convert_env_var( counter ) == SUCCESS )
+                counter--; 
+    }
+    return SUCCESS; 
+}
+
+
+/*********************************************************************/
+/*                                                                   */
+/*      Function name: handle_directory_change                       */
+/*      Return type:   int.                                          */
+/*      Parameter(s):  none                                          */
+/*                                                                   */
+/*      Description:                                                 */
+/*          determines and conducts directory change if needed.      */
+/*                                                                   */
+/*********************************************************************/
+int handle_directory_change( void )
+{
+    char* new_dir = NULL;
+
+    /* ensure we want to switch directories */
+    if ( strcmp( cmds[0], "cd" ) != 0 )
+        return FAILURE;
+
+    /* switching to home directory */
+    if ( n_cmds == 1 || 
+         strcmp( cmds[1], "~/" ) == 0 || 
+         strcmp( cmds[1], "~" ) == 0 
+       )
+    {
+        if( is_directory( getenv( "HOME" ) ) != 0 )
+        {
+            if( chdir( getenv( "HOME" ) ) != 0 )
+                return FAILURE;
+            else
+            {
+                setenv( "PWD", getenv( "HOME" ), 1 );
+                return SUCCESS; 
+            }
+        }
+    }
+
+    /* absolute path directory */
+    if ( cmds[1][0] == '/' )
+    {
+        if ( is_directory( cmds[1] ) != 0 )
+        {
+            if ( chdir( cmds[1] ) != 0 )
+                return FAILURE;
+            else
+            {
+                setenv( "PWD", cmds[1], 1 );
+                return SUCCESS;
+            }
+        }
+    }
+
+    /* relative path directory */
+    new_dir = set_new_dir(); 
+
+    if( is_directory( new_dir ) != 0 )
+    {
+        if( chdir( new_dir ) != 0 )
+            return FAILURE;
+        else
+        {
+            setenv( "PWD", new_dir, 1 );
+            free( new_dir );
+            new_dir = NULL;
+            return SUCCESS;
+        }
+    }
+
+    return FAILURE;
+}
+
+
+/*********************************************************************/
+/*                                                                   */
+/*      Function name: handle_echo                                   */
+/*      Return type:   void                                          */
+/*      Parameter(s):  none                                          */
+/*                                                                   */
+/*      Description:                                                 */
+/*          mimics shell echo utility. Does not translate            */
+/*          environmental variables inside quotes. :(                */
+/*                                                                   */
+/*********************************************************************/
+int handle_echo( void ) 
+{
+    if ( strcmp( cmds[0], "echo" ) != 0 )
+        return FAILURE; 
+
+    int ctr = 1;
+
+    for ( ; ctr < n_cmds; ctr++ )
+        printf( "%s ", cmds[ctr] );
+
+    puts( " " );
+    return SUCCESS;  
+}
+
+
+/*********************************************************************/
+/*                                                                   */
 /*      Function name: check_for_alias                               */
 /*      Return type:   void                                          */
 /*      Parameter(s):  none                                          */
@@ -338,34 +469,7 @@ int check_for_alias( void )
             return SUCCESS; 
         }
     }
-
     return FAILURE; 
-}
-
-
-/*********************************************************************/
-/*                                                                   */
-/*      Function name: handle_env_vars                               */
-/*      Return type:   int                                           */
-/*      Parameter(s):  none                                          */
-/*                                                                   */
-/*      Description:                                                 */
-/*          checks for environmental variables and calls conversion  */
-/*          function.                                                */
-/*                                                                   */
-/*********************************************************************/
-int handle_env_vars( void )
-{
-    int counter = 0; 
-
-    for( ; counter < n_cmds; counter++ )
-    {
-        /* if we find a possible environmental variable */
-        if( strcmp( cmds[counter], "$" ) == 0 )
-            if ( convert_env_var( counter ) == SUCCESS )
-                counter--; 
-    }
-    return SUCCESS; 
 }
 
 
@@ -430,93 +534,6 @@ int convert_env_var( int index )
 }
 
 
-
-/*********************************************************************/
-/*                                                                   */
-/*      Function name: echo_commands                                 */
-/*      Return type:   void                                          */
-/*      Parameter(s):  none                                          */
-/*                                                                   */
-/*      Description:                                                 */
-/*          mimics shell echo utility                                */
-/*                                                                   */
-/*********************************************************************/
-void echo_commands( void ) 
-{
-    return; 
-}
-
-
-/*********************************************************************/
-/*                                                                   */
-/*      Function name: handle_directory_change                       */
-/*      Return type:   int.                                          */
-/*      Parameter(s):  none                                          */
-/*                                                                   */
-/*      Description:                                                 */
-/*          determines and conducts directory change if needed.      */
-/*                                                                   */
-/*********************************************************************/
-int handle_directory_change( void )
-{
-    if ( strcmp( cmds[0], "cd" ) != 0 && n_cmds < 2 )
-        return FAILURE; 
-
-    char* new_dir = NULL;
-
-    if ( strcmp( cmds[1], ".." ) == 0 || 
-         strcmp( cmds[1], "./.." ) == 0 
-       )
-    {
-        if ( chdir( get_parent_dir() ) < 0 )
-        {
-            fprintf( stderr, "Error changing to parent directory. \
-                Please provide a correct path.\n" );
-
-            return FAILURE;
-        } 
-
-        if( ( setenv( "PWD", get_parent_dir(), 1 ) ) < 0 )
-            puts( "Error. Could not change $PWD" );
-    }
-    else
-    {
-        if ( ( new_dir = set_new_dir() ) == NULL )
-        {
-            fprintf( stderr, "Error. Could not set new directory.\n" );
-            return FAILURE;
-        }            
-
-        if( is_directory( new_dir ) == 0 )
-        {
-            fprintf( stderr, "Error. %s is not a directory.\n", 
-                     new_dir );
-
-            return FAILURE;
-        }
-
-        if ( chdir( new_dir ) < 0 )
-        {
-            fprintf( stderr, "Error changing directories. Please \
-                provide a correct path.\n" );
-
-            return FAILURE;
-        }
-
-
-        /* reset env variables */
-        if( ( setenv( "PWD", new_dir, 1 ) ) < 0 )
-            puts( "Error. Could not change $PWD" );
-
-        free( new_dir );
-        new_dir = NULL;
-
-    }
-
-    return SUCCESS;
-}
-
-
 /*********************************************************************/
 /*                                                                   */
 /*      Function name: get_parent_dir                                */
@@ -527,25 +544,33 @@ int handle_directory_change( void )
 /*          returns path to parent directory from current directory. */
 /*                                                                   */
 /*********************************************************************/
-char* get_parent_dir( void )
+char* get_parent_dir( int n_par )
 {
     char* path = getenv( "PWD" );
     int end_parent = strlen( path ) - 1;
+    int num_par = 0;
     char *parent_path = NULL; 
 
-    while( path[end_parent] != '/' )
-        end_parent--;
+    for ( ; end_parent != 0; end_parent-- )
+    {
+        if ( num_par == n_par )
+            break;
 
-    parent_path = (char*) malloc( ( end_parent + 1 ) * sizeof(char) );
+        if ( path[end_parent] == '/' )
+            num_par++; 
+    }
+
+    parent_path = (char*) malloc( ( end_parent + 2 ) * sizeof(char) );
+    
     if ( parent_path == NULL )
     {
         fprintf( stderr, "Error allocating memory for parent path.\n" );
         return NULL;
     }
 
-    strncpy( parent_path, path, end_parent );
+    strncpy( parent_path, path, end_parent + 1 );
 
-    parent_path[end_parent] = N_TERM;
+    parent_path[end_parent + 1] = N_TERM;
 
     return parent_path;
 }
@@ -563,97 +588,135 @@ char* get_parent_dir( void )
 /*********************************************************************/
 char* set_new_dir( )
 {
-    char* cur_dir = getenv( "PWD" );
+    char* cur_dir = NULL;
     char* new_dir = NULL;
+    char* parent_dir = NULL;
+    int num_parents;
 
-    /* if its a relative path */
-    if( strncmp( cmds[1], "./", 2 ) == 0 )
+    /* check if changing to home directory */
+    if( cmds[1][0] == '~' )
     {
-        /* create new pwd */
-        new_dir = (char*) malloc( ( strlen(&cmds[1][2]) + 
-                                    strlen( cur_dir ) +
-                                    2 
-                                  ) * sizeof(char)
-                                );
+        /* set env variable to count parents if necessary */
+        if ( setenv( "PWD", getenv( "HOME" ), 1 ) != 0 )
+            return NULL; 
+    }
+    
+    cur_dir = getenv( "PWD" );
 
-        if ( new_dir == NULL )
-        {
-            fprintf( stderr, "Error allocating memory for setenv.\n" );
-            return NULL;
-        }
+    new_dir = (char*) malloc( ( strlen( cur_dir ) +
+                                strlen( cmds[1] ) + 2 )
+                                * sizeof(char) );
 
-        strncpy( new_dir, cur_dir, strlen( cur_dir ) );
-        new_dir[strlen( cur_dir )] = '/';
-        new_dir[strlen( cur_dir ) + 1] = N_TERM;
+    if ( new_dir == NULL )
+        return FAILURE; 
 
+    strcpy( new_dir, cur_dir );
+    new_dir[strlen( cur_dir )] = '/';
+    new_dir[strlen( cur_dir ) + 1] = N_TERM;
+
+    if( strncmp( cmds[1], "~/", 2 ) == 0 ||
+        strncmp( cmds[1], "./", 2 ) == 0
+      )
         strcat( new_dir, &cmds[1][2] );
-    }
-    else if( strncmp( cmds[1], "..", 2 ) == 0 )
-    {
-        /* create new pwd */
-        new_dir = (char*) malloc( ( strlen(&cmds[1][2]) + 
-                                    strlen( get_parent_dir() ) +
-                                    1 
-                                  ) * sizeof(char)
-                                );
-
-        if ( new_dir == NULL )
-        {
-            fprintf( stderr, "Error allocating memory for setenv.\n" );
-            return NULL;
-        }
-
-        strncpy( new_dir, get_parent_dir(), 
-                 strlen( get_parent_dir() ) );
-
-        new_dir[strlen( get_parent_dir() )] = N_TERM;
-
-        strcat( new_dir, &cmds[1][2] );
-    }
-    else if( strncmp( cmds[1], "/", 1 ) != 0 )
-    {
-        /* case it is a relative path from current directory */
-        new_dir = (char*) malloc( ( strlen( cur_dir ) + 
-                                    strlen( cmds[1] ) +
-                                    2 
-                                  ) * sizeof(char)
-                                );
-
-        if ( new_dir == NULL )
-        {
-            fprintf( stderr, "Error allocating memory for setenv.\n" );
-            return NULL;
-        }
-
-        strncpy( new_dir, cur_dir, strlen( cur_dir ) );
-        new_dir[strlen( cur_dir )] = '/';
-        new_dir[strlen( cur_dir ) + 1] = N_TERM;
-
-        strcat( new_dir, cmds[1] );
-    }
     else
+        strcat( new_dir, cmds[1] );
+
+    /* see if any parent directories */
+    num_parents = count_parents( new_dir );
+
+    /* if there are no parents to convert */
+    if ( num_parents == 0 )
+        return new_dir;
+
+    /* convert parent directories and append the rest */
+    char* loc = get_last_parent( new_dir );
+    long last_par_index = loc - new_dir; 
+
+    /* get parent dir absolute path */
+    parent_dir = get_parent_dir( num_parents );
+
+    /* if no directories to append after parents */
+    if ( strlen( new_dir ) - 2 == last_par_index )
     {
-        new_dir = (char*) malloc( ( strlen( cmds[1] ) + 1 ) 
-                                           * sizeof(char) );
-
-        if ( new_dir == NULL )
-        {
-            fprintf( stderr, "Error allocating memory for setenv.\n" );
-            return NULL;
-        }
-
-        strcpy( new_dir, cmds[1] );
+        free( new_dir );
+        new_dir = NULL;
+        return parent_dir;
     }
+
+    /* append any remaining directories */
+    free( new_dir );
+    new_dir = (char*) malloc( ( strlen( parent_dir ) +
+                            ( strlen( new_dir ) - last_par_index - 2 )  +
+                            1 )
+                            * sizeof(char) );
+    if( new_dir == NULL )
+        return NULL;
+
+    strcpy( new_dir, parent_dir );
+    strcat( new_dir, loc + 2 );
+
+    free( parent_dir );
+    parent_dir = NULL;
 
     return new_dir;
 } /* end set_new_dir() */
 
 
 
+/*********************************************************************/
+/*                                                                   */
+/*      Function name: count_parents                                 */
+/*      Return type:   int                                           */
+/*      Parameter(s):                                                */
+/*          char* str: string to search.                             */
+/*                                                                   */
+/*      Description:                                                 */
+/*          calculates number of parents directories.                */
+/*                                                                   */
+/*********************************************************************/
+int count_parents( const char* str )
+{
+    char* loc = strstr( str, ".." );
+    if( loc == NULL )
+        return 0;
+
+    return 1 + count_parents( loc + 2 );
+}
+
+
+/*********************************************************************/
+/*                                                                   */
+/*      Function name: get_last_parent                               */
+/*      Return type:   int                                           */
+/*      Parameter(s):                                                */
+/*          char* str: string to search.                             */
+/*                                                                   */
+/*      Description:                                                 */
+/*          returns index of last parent (..) dir in str - 2         */
+/*                                                                   */
+/*********************************************************************/
+char* get_last_parent( const char* str )
+{
+    char* loc = strstr( str, ".." );
+    char* dummy = loc;
+
+    while( dummy != NULL )
+    {
+        loc = dummy; 
+        dummy = get_last_parent( loc + 2 );
+    }
+
+    return loc; 
+}
+
+
+
+
+
+
+
+
 /* LOW LEVEL FUNCTIONS START POINT */
-
-
-
 
 
 /*********************************************************************/
