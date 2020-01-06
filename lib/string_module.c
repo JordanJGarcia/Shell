@@ -256,9 +256,11 @@ int parse_string( char* line, char*** cmds, int* n_cmds )
             char term = line[i++];
 
             /* set quote marker */
-            // these are interfering with creating aliases. 
-            build_string( '*', &cmd );
-            build_string( '*', &cmd );
+            if ( *n_cmds > 0 && strcmp( (*cmds)[0], "alias" ) != 0 )
+            {
+                build_string( '*', &cmd );
+                build_string( '*', &cmd );
+            }
 
             /* build command with everything inside quotes */
             do
