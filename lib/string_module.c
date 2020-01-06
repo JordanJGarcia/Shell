@@ -206,3 +206,88 @@ int add_strings( char*** to, char*** from, int start, int n_indices )
 
     return SUCCESS;
 }
+
+
+
+/*********************************************************************/
+/*                                                                   */
+/*      Function name: parse_string                                  */
+/*      Return type:   char**                                        */
+/*      Parameter(s):  1                                             */
+/*          char* line: line of commands user types in               */
+/*          char*** cmds: array to place strings in.                 */
+/*          int* n_cmds: pointer to length of array cmds.            */ 
+/*                                                                   */
+/*      Description:                                                 */
+/*          This function splits a string into an array              */
+/*          of strings.                                              */
+/*                                                                   */
+/*********************************************************************/
+int parse_string( char* line, char*** cmds, int* n_cmds )
+{
+    int line_size = strlen( line );
+    char* cmd = NULL;
+
+    for( int i = 0; i < line_size; i++ )
+    {
+        /* special characters to watch out for */
+        if ( line[i] == '$' || line[i] == '|' || line[i] == '<' || 
+             line[i] == '>' || line[i] == '&' || line[i] == '?' ||
+             line[i] == '!' || line[i] == ',' || line[i] == '=' || 
+             line[i] == ':'
+           )
+        {
+            //puts( "Found special character!" );
+            if( cmd != NULL )
+                add_string( &cmd, cmds, n_cmds );
+
+            build_string( line[i], &cmd );
+            add_string( &cmd, cmds, n_cmds );
+        }
+        else if ( i == line_size - 1 ) /* end of line */
+        {
+            if( !isspace( line[i] ) )
+                build_string( line[i], &cmd );
+
+            add_string( &cmd, cmds, n_cmds );
+        }
+        else if ( line[i] == '\"' || line[i] == '\'' ) /* string in quotes */
+        {
+            char term = line[i++];
+
+            /* set quote marker */
+            // these are interfering with creating aliases. 
+            build_string( '*', &cmd );
+            build_string( '*', &cmd );
+
+            /* build command with everything inside quotes */
+            do
+            {
+                /* if user forgot end quote, continue */
+                if ( i == line_size - 1 )
+                {
+                    build_string( line[i], &cmd );
+                    break;
+                } 
+                build_string( line[i++], &cmd );
+            } while( line[i] != term );
+
+            add_string( &cmd, cmds, n_cmds );
+        }
+        else if ( isspace( line[i] ) ) /* spacing */
+        {
+            if ( cmd != NULL )
+                add_string( &cmd, cmds, n_cmds );
+
+            /* if more than one space */
+            while ( isspace( line[i + 1] ) )
+                build_string( line[i++], &cmd );
+
+            if ( cmd != NULL )
+                add_string( &cmd, cmds, n_cmds );
+        }
+        else /* everything else */
+            build_string( line[i], &cmd ); 
+    }
+    return SUCCESS;
+} /* end split_input() */

@@ -8,6 +8,10 @@
 /*                                                                   */
 /*********************************************************************/
 
+
+// NEED TO FIGURE OUT HOW TO INCORPORATE PROCESS_QUOTED_STRING() INTO PROGRAM
+
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -23,7 +27,7 @@
 #include "../lib/string_module.h"
 
 /* global variables */
-char*   cmd = NULL; 
+//char*   cmd = NULL; 
 char**  cmds = NULL; 
 int     n_cmds = 0; 
 
@@ -32,22 +36,21 @@ int     n_cmds = 0;
 #define N_TERM '\0'
 #define FAILURE 0
 #define SUCCESS 1
+#define QUOTE_MARKER "**"
+#define PWD "PWD"
+#define USER "USER"
+#define HOST "HOST"
 
 /* utility function prototypes */
 void    start_shell( void );
 void    parse_input( char* );
 int     process_commands( void );
+int     process_quoted_string( char*, int );
 
 /* helper function (low level) */
 int     is_directory( const char* );
 int     is_reg_file( const char* );
 void    print_commands( void );
-
-/* command processing function prototypes */
-void    execute( void );
-void    execute_redirection( char ); /* char signals I|O redirection */
-void    execute_multiple_redirection( void );
-void    execute_pipe( void );
 
 /* alias handling */
 int     handle_aliases( void );
@@ -58,8 +61,8 @@ int     handle_env_vars( void );
 int     convert_env_var( int );
 
 /* directory change handling */
-char*   get_parent_dir( int );
 int     handle_directory_change( void );
+char*   get_parent_dir( int );
 char*   set_new_dir( void );
 int     count_parents( const char* );
 char*   get_last_parent( const char* str );
@@ -67,7 +70,12 @@ char*   get_last_parent( const char* str );
 /* echo handling */
 int     handle_echo( void );
 
-
+/* program execution function prototypes */
+int     handle_program_execution( void );
+void    execute( void );
+void    execute_redirection( char ); /* char signals I|O redirection */
+void    execute_multiple_redirection( void );
+void    execute_pipe( void );
 
 
 /*********************************************************************/
@@ -102,10 +110,10 @@ void start_shell( void )
     char prompt[PROMPT_SIZE];
     
     /* assign prompt for readline */
-    if( getenv("HOST") == NULL )
-        sprintf( prompt, "%s@UnknownHost> ", getenv("USER") );
+    if( getenv(HOST) == NULL )
+        sprintf( prompt, "%s@UnknownHost> ", getenv(USER) );
     else
-        sprintf( prompt, "%s@%s> ", getenv("USER"), getenv("HOST") );
+        sprintf( prompt, "%s@%s> ", getenv(USER), getenv(HOST) );
 
     char* line = NULL;
 
@@ -121,14 +129,18 @@ void start_shell( void )
             return;
         }
         else
-            parse_input( line );
+            parse_string( line, &cmds, &n_cmds );
+
+        print_commands();
 
 
         if ( cmds != NULL )
             if ( process_commands() == FAILURE )
             {
-                fprintf( stderr, "Error processing commands. Continuing program \
-                        execution. Type \"exit\" to leave shell.\n" );
+                ;
+                //fprintf( stderr, "Error processing commands. " );
+                //fprintf( stderr, "Continuing program execution. ");
+                //fprintf( stderr, "Type \"exit\" to leave shell.\n" );
             }
 
         free( line );
@@ -145,90 +157,25 @@ void start_shell( void )
 }/* end start_shell() */
 
 
-/*********************************************************************/
-/*                                                                   */
-/*      Function name: split_input                                   */
-/*      Return type:   char**                                        */
-/*      Parameter(s):  1                                             */
-/*          char* line: line of commands user types in               */
-/*                                                                   */
-/*      Description:                                                 */
-/*          This function splits the commands typed into an array    */
-/*          of strings.                                              */
-/*                                                                   */
-/*********************************************************************/
-void parse_input( char * line )
+int process_quoted_string( char* str, int index )
 {
-    int line_size = strlen( line );
+    char** split_string = NULL;
+    int n_strings = 0; 
 
-    for( int i = 0; i < line_size; i++ )
-    {
-        /* special characters to watch out for */
-        if ( line[i] == '$' || line[i] == '|' || 
-             line[i] == '<' || line[i] == '>' || 
-             line[i] == '&' 
-           )
-        {
-            //puts( "Found special character!" );
-            if( cmd != NULL )
-                add_string( &cmd, &cmds, &n_cmds );
+    // go through string and parse it
+    parse_string( str, &split_string, &n_strings );
 
-            build_string( line[i], &cmd );
-            add_string( &cmd, &cmds, &n_cmds );
-        }
-        else if ( i == line_size - 1 ) /* end of line */
-        {
-            if( !isspace( line[i] ) )
-                build_string( line[i], &cmd );
+    // move_strings_down by number of commands in alias
+    move_strings_down( &cmds, &n_cmds, n_strings, index );
 
-            add_string( &cmd, &cmds, &n_cmds );
-        }
-        else if( line[i] == '=' )
-        {
-            if( cmd != NULL )
-                add_string( &cmd, &cmds, &n_cmds );
+    // add_strings() to cmds 
+    add_strings( &cmds, &split_string, index, n_strings );
 
-            build_string( line[i], &cmd );
-            add_string( &cmd, &cmds, &n_cmds );
-        }
-        else if ( line[i] == '\"' || line[i] == '\'' ) /* string in quotes */
-        {
-            char term = line[i];
-            i++;
+    puts( "\nafter processing quoted string: " );
+    print_commands(); 
 
-            /* build command with everything inside quotes */
-            do
-            {
-                /* if user forgot end quote, continue */
-                if ( i == line_size - 1 )
-                {
-                    build_string( line[i], &cmd );
-                    break;
-                } 
-                build_string( line[i++], &cmd );
-
-            }while( line[i] != term );
-
-            //parse_input( cmd );
-            add_string( &cmd, &cmds, &n_cmds );
-        }
-        else if ( isspace( line[i] ) ) /* spacing */
-            add_string( &cmd, &cmds, &n_cmds );
-        else if ( ispunct( line[i] ) ) /* punctuation */
-        {
-            if ( cmd != NULL )
-                add_string( &cmd, &cmds, &n_cmds );
-
-            build_string( line[i], &cmd );
-            add_string( &cmd, &cmds, &n_cmds );
-        }
-        else /* everything else */
-            build_string( line[i], &cmd ); 
-    }
-    /* print out commands */
-    //print_commands();
-    return;
-} /* end split_input() */
+    return SUCCESS;
+}
 
 
 /*********************************************************************/
@@ -253,10 +200,12 @@ int process_commands( void )
     // suggested order of processing: 
 
     // handle all alias processing 
-    handle_aliases();
+    if ( handle_aliases() == FAILURE )
+        return FAILURE;
 
     // handle environmental variable translations
-    handle_env_vars();
+    if ( handle_env_vars() == FAILURE )
+        ; //return FAILURE;
 
     // handle directory changes
     handle_directory_change(); 
@@ -264,6 +213,10 @@ int process_commands( void )
     // handle echo command 
     handle_echo(); 
         
+    // handle program execution
+    handle_program_execution();
+
+
     // check for input/output redirection
     // check for pipes
     // check for background processes
@@ -344,6 +297,8 @@ int handle_env_vars( void )
     return SUCCESS; 
 }
 
+// handle punctuation issues here. 
+
 
 /*********************************************************************/
 /*                                                                   */
@@ -375,7 +330,7 @@ int handle_directory_change( void )
                 return FAILURE;
             else
             {
-                setenv( "PWD", getenv( "HOME" ), 1 );
+                setenv( PWD, getenv( "HOME" ), 1 );
                 return SUCCESS; 
             }
         }
@@ -390,7 +345,7 @@ int handle_directory_change( void )
                 return FAILURE;
             else
             {
-                setenv( "PWD", cmds[1], 1 );
+                setenv( PWD, cmds[1], 1 );
                 return SUCCESS;
             }
         }
@@ -405,7 +360,7 @@ int handle_directory_change( void )
             return FAILURE;
         else
         {
-            setenv( "PWD", new_dir, 1 );
+            setenv( PWD, new_dir, 1 );
             free( new_dir );
             new_dir = NULL;
             return SUCCESS;
@@ -432,13 +387,45 @@ int handle_echo( void )
     if ( strcmp( cmds[0], "echo" ) != 0 )
         return FAILURE; 
 
-    int ctr = 1;
+    int ctr = 1;   
 
     for ( ; ctr < n_cmds; ctr++ )
-        printf( "%s ", cmds[ctr] );
+    {
+        if ( strncmp( cmds[ctr], QUOTE_MARKER, 2 ) == 0 &&
+             strlen( cmds[ctr] ) > 2 
+           )
+        {
+            process_quoted_string( cmds[ctr], ctr );
+            handle_env_vars(); 
+
+            /* disregard the quote signals (**) */
+            printf( "%s ", &cmds[ctr][2] );
+        }
+        else
+            printf( "%s ", cmds[ctr] );
+    }
 
     puts( " " );
     return SUCCESS;  
+}
+
+
+/*********************************************************************/
+/*                                                                   */
+/*      Function name: handle_program_execution                      */
+/*      Return type:   int                                           */
+/*      Parameter(s):  none                                          */
+/*                                                                   */
+/*      Description:                                                 */
+/*          Routes all program execution to their respected          */
+/*          functions.                                               */
+/*                                                                   */
+/*********************************************************************/
+int handle_program_execution( void )
+{
+    puts( "\n" );
+    print_commands();
+    return SUCCESS;
 }
 
 
@@ -546,7 +533,7 @@ int convert_env_var( int index )
 /*********************************************************************/
 char* get_parent_dir( int n_par )
 {
-    char* path = getenv( "PWD" );
+    char* path = getenv( PWD );
     int end_parent = strlen( path ) - 1;
     int num_par = 0;
     char *parent_path = NULL; 
@@ -597,11 +584,11 @@ char* set_new_dir( )
     if( cmds[1][0] == '~' )
     {
         /* set env variable to count parents if necessary */
-        if ( setenv( "PWD", getenv( "HOME" ), 1 ) != 0 )
+        if ( setenv( PWD, getenv( "HOME" ), 1 ) != 0 )
             return NULL; 
     }
     
-    cur_dir = getenv( "PWD" );
+    cur_dir = getenv( PWD );
 
     new_dir = (char*) malloc( ( strlen( cur_dir ) +
                                 strlen( cmds[1] ) + 2 )
