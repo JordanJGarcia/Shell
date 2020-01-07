@@ -1,5 +1,7 @@
 # JShell - The Jordan Shell
 
+!!!  NOT COMPLETE  !!!
+
 This is my implementation of a simple shell program. It supports many basic features including:
 
 1. Aliases
