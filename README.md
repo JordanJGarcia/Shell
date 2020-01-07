@@ -1,8 +1,8 @@
 # JShell - The Jordan Shell
 
-!!!  NOT COMPLETE  !!!
+!!!  NOT COMPLETE - Still in development  !!!
 
-This is my implementation of a simple shell program. It supports many basic features including:
+This is my implementation of a simple shell program. It will support many basic features including:
 
 1. Aliases
   - You can add aliases that exist only while program is running.
