@@ -68,7 +68,7 @@ void print_history( FILE *fp )
         i = 0;
         ctr++;
     }
-}
+} /* end print_history() */
 
 
 /*********************************************************************/
@@ -101,7 +101,7 @@ int write_history_to_file( void )
     fclose( fp );
 
     return SUCCESS; 
-}
+} /* end write_history_to_file() */
 
 
 /*********************************************************************/
@@ -133,4 +133,4 @@ int free_history( void )
     history_count = 0;
 
     return SUCCESS; 
-}
+} /* end free_history() */

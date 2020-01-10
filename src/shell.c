@@ -131,6 +131,9 @@ void start_shell( void )
         if ( strcmp( line, "exit" ) == 0 )
         {
             puts( "Now exiting the best shell ever created... :(\n" );
+            free( line );
+            free_history();
+            free_aliases();
             return;
         }
         else
@@ -153,8 +156,9 @@ void start_shell( void )
 
         n_cmds = 0;
     }
-    
+
     free_history();
+    free_aliases();
     return;
 }/* end start_shell() */
 
@@ -164,17 +168,14 @@ int process_quoted_string( char* str, int index )
     char** split_string = NULL;
     int n_strings = 0; 
 
-    // go through string and parse it
+    /* go through string and parse it */
     parse_string( str, &split_string, &n_strings );
 
-    // move_strings_down by number of commands in alias
+    /* move_strings_down by number of commands in alias */
     move_strings_down( &cmds, &n_cmds, n_strings, index );
 
-    // add_strings() to cmds 
+    /* add_strings() to cmds */
     add_strings( &cmds, &split_string, index, n_strings );
-
-    puts( "\nafter processing quoted string: " );
-    print_commands(); 
 
     return SUCCESS;
 }
@@ -209,8 +210,7 @@ int process_commands( void )
         return FAILURE;
 
     // handle environmental variable translations
-    if ( handle_env_vars() == FAILURE )
-        ; //return FAILURE;
+    handle_env_vars();
 
     // handle directory changes
     handle_directory_change(); 
@@ -220,16 +220,14 @@ int process_commands( void )
         
     // handle program execution
     handle_program_execution();
-
-
-    // check for input/output redirection
-    // check for pipes
-    // check for background processes
+        // check for input/output redirection
+        // check for pipes
+        // check for background processes
 
     /* add to history */
     add_cmds_to_history( cmds, n_cmds );
 
-    //print_commands();
+    print_commands();
     return SUCCESS;
 }/* end process_commands */
 
@@ -441,8 +439,8 @@ int handle_echo( void )
 /*********************************************************************/
 int handle_program_execution( void )
 {
-    puts( "\n" );
-    print_commands();
+    //puts( "\n" );
+    //print_commands();
     return SUCCESS;
 }
 
