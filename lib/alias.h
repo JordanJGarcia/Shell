@@ -23,7 +23,7 @@ char* 			token;
 extern int		n_cmds;
 
 /* global variable to hold aliases */
-alias alias_arr[ALIAS_LIMIT];
+alias 	alias_arr[ALIAS_LIMIT];
 
 /* prototypes */
 alias*  add_alias( const char*, char* );

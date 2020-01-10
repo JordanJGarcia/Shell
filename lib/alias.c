@@ -1,6 +1,6 @@
 #include "alias.h"
 
-/* global variables */
+/* globals */
 int     n_aliases = 0;
 int     n_tokens = 0; 
 
