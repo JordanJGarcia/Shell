@@ -9,8 +9,7 @@
 /*********************************************************************/
 
 
-// NEED TO FIGURE OUT HOW TO INCORPORATE PROCESS_QUOTED_STRING() INTO PROGRAM
-// FIGURE OUT HOW TO INCORPORATE BSEARCH INTO ALIASES.
+// NEED TO FIGURE OUT HOW TO INCORPORATE PROCESS_QUOTED_STRING() INTO PROGRAM 
 
 
 #include <stdio.h>
@@ -26,6 +25,7 @@
 /* for custom libraries */
 #include "../lib/alias.h"
 #include "../lib/string_module.h"
+#include "../lib/command_history.h"
 
 /* macros */
 #define PROMPT_SIZE 255
@@ -53,6 +53,9 @@ int     process_quoted_string( char*, int );
 int     is_directory( const char* );
 int     is_reg_file( const char* );
 void    print_commands( void );
+
+/* history handling */
+void    handle_history( void );
 
 /* alias handling */
 int     handle_aliases( void );
@@ -140,6 +143,7 @@ void start_shell( void )
             if ( process_commands() == FAILURE )
                 ;
 
+        /* free all memory */
         free( line );
 
         for ( int i = 0; i < n_cmds; i++ )
@@ -196,6 +200,9 @@ int process_commands( void )
 
     // suggested order of processing: 
 
+    // handle history
+    handle_history(); 
+
     // handle all alias processing 
     if ( handle_aliases() == FAILURE )
         return FAILURE;
@@ -218,11 +225,29 @@ int process_commands( void )
     // check for pipes
     // check for background processes
 
+    /* add to history */
+    add_cmds_to_history( cmds, n_cmds );
+
     //print_commands();
     return SUCCESS;
 }/* end process_commands */
 
 
+/*********************************************************************/
+/*                                                                   */
+/*      Function name: handle_history                                */
+/*      Return type:   void                                          */
+/*      Parameter(s):  none                                          */
+/*                                                                   */
+/*      Description:                                                 */
+/*          prints history of commands entered.                      */
+/*                                                                   */
+/*********************************************************************/
+void handle_history( void )
+{
+    if ( strcmp( cmds[0], "history" ) == 0 )
+        print_history(); 
+}
 
 /*********************************************************************/
 /*                                                                   */
