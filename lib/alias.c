@@ -56,7 +56,7 @@ alias* add_alias( const char* og, char* trns )
     qsort( alias_arr, (size_t)n_aliases + 1, sizeof(alias_arr[0]), alias_cmp );
 
     return &alias_arr[n_aliases++];
-}
+} /* end add_alias() */
 
 
 /*********************************************************************/
@@ -80,7 +80,7 @@ alias* remove_alias( const char* og )
     n_aliases--;
 
     return found;
-}
+} /* end remove_alias() */
 
 
 /*********************************************************************/
@@ -95,10 +95,11 @@ alias* find_alias( const char* og )
 {
 
     alias* found = NULL;
-    found = (alias*)bsearch( &og, alias_arr, (size_t)n_aliases, sizeof( alias_arr[0] ), alias_cmp );
+    found = (alias*)bsearch( &og, alias_arr, (size_t)n_aliases, 
+                             sizeof( alias_arr[0] ), alias_cmp );
 
     return found;
-}
+} /* end find_alias() */
 
 
 /*********************************************************************/
@@ -128,7 +129,7 @@ void parse_translated( const char* line )
             build_string( line[i], &token );
     }
     return;
-}
+} /* end parse_translated() */
 
 
 /*********************************************************************/
@@ -214,7 +215,7 @@ void adjust_aliases( alias* found )
     found->translated = NULL;
 
     return;
-}
+} /* end adjust_aliases */
 
 /*********************************************************************/
 /*                                                                   */
@@ -247,7 +248,7 @@ void print_aliases( void )
         counter++;
     }
     puts( " " );
-}
+} /* end print_aliases */
 
 
 /*********************************************************************/
@@ -279,12 +280,56 @@ void place_tokens( void )
     n_tokens = 0; 
 
     return;
-}
+} /* end place_tokens() */
 
-/* used to compare aliases for qsort */
+
+/*********************************************************************/
+/*                                                                   */
+/*      Function name: alias_cmp                                     */
+/*      Return type:   int                                           */
+/*      Parameter(s):                                                */
+/*          a1: pointer to first alias.                              */
+/*          a2: pointer to second alias.                             */
+/*      Description:                                                 */
+/*          used to compare aliases for qsort and bsearch.           */
+/*                                                                   */
+/*********************************************************************/
 int alias_cmp( const void* a1, const void* a2 )
 {
     return strcmp( ((const alias*)a1)->original, ((const alias*)a2)->original );
-}
+} /* end alias_cmp() */
 
+
+/*********************************************************************/
+/*                                                                   */
+/*      Function name: free_aliases                                  */
+/*      Return type:   int                                           */
+/*      Parameter(s):  none                                          */
+/*      Description:                                                 */
+/*          frees all memory allocated for aliases.                  */
+/*                                                                   */
+/*********************************************************************/
+int free_aliases( void )
+{
+    int ctr = 0, i = 0; 
+    while( ctr < n_aliases )
+    {
+        for ( ; i < alias_arr[ctr].n_cmds; i++ )
+        {
+            free( alias_arr[ctr].translated[i] );
+            alias_arr[ctr].translated[i] = NULL;
+        }
+        alias_arr[ctr].n_cmds = 0;
+        free( alias_arr[ctr].translated );
+        free( alias_arr[ctr].original );
+        alias_arr[ctr].translated = NULL;
+        alias_arr[ctr].original = NULL;
+
+        i = 0;
+        ctr++;
+    }
+    n_aliases = 0;
+
+    return SUCCESS; 
+} /* end free_aliases() */
 
