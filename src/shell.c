@@ -200,7 +200,7 @@ int process_commands( void )
 
     // suggested order of processing: 
 
-    // handle history
+    // handle printing of history
     handle_history(); 
 
     // handle all alias processing 

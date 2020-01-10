@@ -27,16 +27,16 @@
 /* structure to hold command input history */
 typedef struct cmd_history_t
 {
-	int 	cmd_num;
-	int 	n_cmds; 
-    char** 	cmds;
+    int     cmd_num;
+    int     n_cmds; 
+    char**  cmds;
 } cmd_history;
 
 /* globals */
-cmd_history 	history[CMD_LIMIT];
+cmd_history     history[CMD_LIMIT];
 
 /* function prototypes */
-int 	add_cmds_to_history( char**, int );
-void 	print_history( void );
+int     add_cmds_to_history( char**, int );
+void    print_history( void );
 
 #endif
