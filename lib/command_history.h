@@ -20,14 +20,13 @@
 #include "string_module.h"
 
 /* macros */
-#define CMD_LIMIT 100
+#define CMD_LIMIT 50
 #define FAILURE 0
 #define SUCCESS 1
 
 /* structure to hold command input history */
 typedef struct cmd_history_t
 {
-    int     cmd_num;
     int     n_cmds; 
     char**  cmds;
 } cmd_history;
@@ -37,6 +36,8 @@ cmd_history     history[CMD_LIMIT];
 
 /* function prototypes */
 int     add_cmds_to_history( char**, int );
-void    print_history( void );
+void    print_history( FILE* );
+int     write_history_to_file( void );
+int     free_history( void );
 
 #endif

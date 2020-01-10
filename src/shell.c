@@ -153,7 +153,8 @@ void start_shell( void )
 
         n_cmds = 0;
     }
-
+    
+    free_history();
     return;
 }/* end start_shell() */
 
@@ -246,7 +247,7 @@ int process_commands( void )
 void handle_history( void )
 {
     if ( strcmp( cmds[0], "history" ) == 0 )
-        print_history(); 
+        print_history( stdout ); 
 }
 
 /*********************************************************************/
@@ -385,7 +386,7 @@ int handle_directory_change( void )
     }
 
     return SUCCESS;
-}
+} /* end handle_directory_change() */
 
 
 /*********************************************************************/
@@ -602,11 +603,6 @@ int set_new_dir( void )
         sprintf( current_path, "%s/", getenv( "HOME" ) );
     else
         sprintf( current_path, "%s/", getenv( "PWD" ) );
-
-    /* 
-       check for a name after to switch to 
-       another user's home directory 
-    */
 
     /* append remaining path provided in command line */
     if( strncmp( cmds[1], "~/", 2 ) == 0 ||

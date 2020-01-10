@@ -18,8 +18,11 @@ int add_cmds_to_history( char** cmds, int n_cmds )
     /* error handling */
     if ( history_count == CMD_LIMIT )
     {
-        fprintf( stderr, "Error. History is full.\n" );
-        return FAILURE; 
+        fprintf(stderr, 
+            "At history limit. Writing history to ~/.j_history\n" );
+
+        if ( write_history_to_file() == FAILURE )
+            return FAILURE;
     }
 
     /* allocate memory for commands */
@@ -52,17 +55,82 @@ int add_cmds_to_history( char** cmds, int n_cmds )
 /*      Parameter(s): none                                           */
 /*                                                                   */
 /*********************************************************************/
-void print_history( void )
+void print_history( FILE *fp )
 {
     int ctr = 0, i = 0; 
     while( ctr < history_count )
     {
         printf( "\t" );
         for ( ; i < history[ctr].n_cmds; i++ )
-            printf( "%s ", history[ctr].cmds[i] );
+            fprintf( fp, "%s ", history[ctr].cmds[i] );
 
-        puts( " " );
+        fprintf( fp, "\n" );
         i = 0;
         ctr++;
     }
+}
+
+
+/*********************************************************************/
+/*                                                                   */
+/*      Function name: write_history_to_file                         */
+/*      Return type:   int                                           */
+/*      Parameter(s): none                                           */
+/*                                                                   */
+/*********************************************************************/
+int write_history_to_file( void )
+{
+    char out_file[255];
+    sprintf( out_file, "%s%s", getenv( "HOME" ), "/.j_history" ); 
+    char* mode = "a+";
+    FILE* fp; 
+
+    /* open file to write to */
+    if( ( fp = fopen( out_file, mode ) ) == NULL )
+    {
+        fprintf( stderr, "Error. Could not open %s\n", out_file );
+        perror("Error");
+        return FAILURE;
+    }
+
+    /* write all history to outfile */
+    print_history( fp ); 
+    free_history();
+
+    /* close file */
+    fclose( fp );
+
+    return SUCCESS; 
+}
+
+
+/*********************************************************************/
+/*                                                                   */
+/*      Function name: free_history                                  */
+/*      Return type:   int                                           */
+/*      Parameter(s):  none                                          */
+/*      Description:                                                 */
+/*          Frees all memory allocated for history array.            */
+/*                                                                   */
+/*********************************************************************/
+int free_history( void )
+{
+    int ctr = 0, i = 0; 
+    while( ctr < history_count )
+    {
+        for ( ; i < history[ctr].n_cmds; i++ )
+        {
+            free( history[ctr].cmds[i] );
+            history[ctr].cmds[i] = NULL;
+        }
+        history[ctr].n_cmds = 0;
+        free( history[ctr].cmds );
+        history[ctr].cmds = NULL;
+
+        i = 0;
+        ctr++;
+    }
+    history_count = 0;
+
+    return SUCCESS; 
 }
