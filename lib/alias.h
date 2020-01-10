@@ -33,6 +33,7 @@ void 	parse_translated( const char* );
 void 	adjust_aliases( alias* found );
 void 	print_aliases( void );
 void 	place_tokens( void );
+int 	alias_cmp( const void*, const void* );
 
 // add qsort & bsearch to here so you can store more aliases
 

@@ -14,7 +14,7 @@ int     n_tokens = 0;
 /*                                                                   */
 /*********************************************************************/
 alias* add_alias( const char* og, char* trns )
-{   
+{
     /* create an array of strings of trns */
     parse_translated( trns );
 
@@ -51,6 +51,9 @@ alias* add_alias( const char* og, char* trns )
 
     /* place tokens into alias translated */
     place_tokens();
+
+    /* sort array for bsearch() */
+    qsort( alias_arr, (size_t)n_aliases + 1, sizeof(alias_arr[0]), alias_cmp );
 
     return &alias_arr[n_aliases++];
 }
@@ -90,12 +93,11 @@ alias* remove_alias( const char* og )
 /*********************************************************************/
 alias* find_alias( const char* og )
 {
-    for ( int i = 0; i < n_aliases; i++ )
-    {
-        if ( strcmp( og, alias_arr[i].original ) == 0 )
-            return &alias_arr[i];
-    }
-    return NULL;
+
+    alias* found = NULL;
+    found = (alias*)bsearch( &og, alias_arr, (size_t)n_aliases, sizeof( alias_arr[0] ), alias_cmp );
+
+    return found;
 }
 
 
@@ -235,19 +237,6 @@ void print_aliases( void )
 
     while ( counter != n_aliases )
     {
-        /*
-        puts( "***************************************************" );
-        printf( "Alias # %d: \n", counter + 1 );
-        printf( "Original:\t%s\n", alias_arr[counter].original );
-        printf( "Translated:\t" ); //, alias_arr[counter].translated );
-        for( int i = 0; i < alias_arr[counter].n_cmds; i++ )
-            printf( "%s ", alias_arr[counter].translated[i] );
-
-        puts( " " );
-        puts( "***************************************************" );
-        puts( " " );
-        */
-
         printf( "alias\t%s\t", alias_arr[counter].original );
         for( trans_counter = 0; trans_counter < alias_arr[counter].n_cmds; 
              trans_counter++ )
@@ -291,4 +280,11 @@ void place_tokens( void )
 
     return;
 }
+
+/* used to compare aliases for qsort */
+int alias_cmp( const void* a1, const void* a2 )
+{
+    return strcmp( ((const alias*)a1)->original, ((const alias*)a2)->original );
+}
+
 
