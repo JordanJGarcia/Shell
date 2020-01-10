@@ -63,12 +63,12 @@ int add_string( char** str, char*** arr, int* str_count )
     /* allocate memory to add new string to array */
     if ( *str_count == 0 )
     {
-        if ( (*arr = (char**)malloc( sizeof(char*) ) ) == NULL )
+        if ( (*arr = (char**)malloc( 2 * sizeof(char*) ) ) == NULL )
             return FAILURE;
     }
     else
     {
-        if ( (*arr = (char**)realloc(*arr, (*str_count + 1) 
+        if ( (*arr = (char**)realloc(*arr, (*str_count + 2) 
                                      * sizeof(char*) ) ) == NULL
            )
             return FAILURE;
@@ -84,12 +84,6 @@ int add_string( char** str, char*** arr, int* str_count )
 
     /* increase command count */
     *str_count += 1;
-
-    /* allocate memory to add null term */
-    if ( (*arr = (char**)realloc( *arr, (*str_count + 1) * 
-                                sizeof(char*) ) ) == NULL 
-       )
-        return FAILURE;
 
     /* last element set to NULL for execv() to work */
     (*arr)[*str_count] = NULL;

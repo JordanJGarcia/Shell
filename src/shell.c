@@ -10,6 +10,7 @@
 
 
 // NEED TO FIGURE OUT HOW TO INCORPORATE PROCESS_QUOTED_STRING() INTO PROGRAM
+// FIGURE OUT HOW TO INCORPORATE BSEARCH INTO ALIASES.
 
 
 #include <stdio.h>
@@ -26,11 +27,6 @@
 #include "../lib/alias.h"
 #include "../lib/string_module.h"
 
-/* global variables */
-//char*   cmd = NULL; 
-char**  cmds = NULL; 
-int     n_cmds = 0; 
-
 /* macros */
 #define PROMPT_SIZE 255
 #define N_TERM '\0'
@@ -40,6 +36,12 @@ int     n_cmds = 0;
 #define PWD "PWD"
 #define USER "USER"
 #define HOST "HOST"
+
+/* global variables */
+//char*   cmd = NULL; 
+char**  cmds = NULL; 
+int     n_cmds = 0; 
+char    current_path[PROMPT_SIZE];
 
 /* utility function prototypes */
 void    start_shell( void );
@@ -63,7 +65,7 @@ int     convert_env_var( int );
 /* directory change handling */
 int     handle_directory_change( void );
 char*   get_parent_dir( int );
-char*   set_new_dir( void );
+int     set_new_dir( void );
 int     count_parents( const char* );
 char*   get_last_parent( const char* str );
 
@@ -136,12 +138,7 @@ void start_shell( void )
 
         if ( cmds != NULL )
             if ( process_commands() == FAILURE )
-            {
                 ;
-                //fprintf( stderr, "Error processing commands. " );
-                //fprintf( stderr, "Continuing program execution. ");
-                //fprintf( stderr, "Type \"exit\" to leave shell.\n" );
-            }
 
         free( line );
 
@@ -351,23 +348,18 @@ int handle_directory_change( void )
         }
     }
 
-    /* relative path directory */
-    new_dir = set_new_dir(); 
+    /* relative path directory */ 
+    set_new_dir();
 
-    if( is_directory( new_dir ) != 0 )
+    if ( is_directory( current_path ) != 0 )
     {
-        if( chdir( new_dir ) != 0 )
+        if ( chdir( current_path ) != 0 )
             return FAILURE;
         else
-        {
-            setenv( PWD, new_dir, 1 );
-            free( new_dir );
-            new_dir = NULL;
-            return SUCCESS;
-        }
+            setenv( PWD, current_path, 1 );
     }
 
-    return FAILURE;
+    return SUCCESS;
 }
 
 
@@ -536,7 +528,7 @@ char* get_parent_dir( int n_par )
     char* path = getenv( PWD );
     int end_parent = strlen( path ) - 1;
     int num_par = 0;
-    char *parent_path = NULL; 
+    char *parent_path = NULL;
 
     for ( ; end_parent != 0; end_parent-- )
     {
@@ -556,11 +548,10 @@ char* get_parent_dir( int n_par )
     }
 
     strncpy( parent_path, path, end_parent + 1 );
-
     parent_path[end_parent + 1] = N_TERM;
 
     return parent_path;
-}
+} /* end get_parent_dir() */
 
 
 /*********************************************************************/
@@ -573,79 +564,59 @@ char* get_parent_dir( int n_par )
 /*          creates absolute path for new directory.                 */
 /*                                                                   */
 /*********************************************************************/
-char* set_new_dir( )
+
+// this funtion sometimes appends too many slashes, but it doesnt affect it. 
+// maybe create a separate function to assign current_path where I test for that stuff
+int set_new_dir( void )
 {
-    char* cur_dir = NULL;
-    char* new_dir = NULL;
     char* parent_dir = NULL;
     int num_parents;
 
     /* check if changing to home directory */
-    if( cmds[1][0] == '~' )
-    {
-        /* set env variable to count parents if necessary */
-        if ( setenv( PWD, getenv( "HOME" ), 1 ) != 0 )
-            return NULL; 
-    }
-    
-    cur_dir = getenv( PWD );
+    if ( cmds[1][0] == '~' )
+        sprintf( current_path, "%s/", getenv( "HOME" ) );
+    else
+        sprintf( current_path, "%s/", getenv( "PWD" ) );
 
-    new_dir = (char*) malloc( ( strlen( cur_dir ) +
-                                strlen( cmds[1] ) + 2 )
-                                * sizeof(char) );
+    /* 
+       check for a name after to switch to 
+       another user's home directory 
+    */
 
-    if ( new_dir == NULL )
-        return FAILURE; 
-
-    strcpy( new_dir, cur_dir );
-    new_dir[strlen( cur_dir )] = '/';
-    new_dir[strlen( cur_dir ) + 1] = N_TERM;
-
+    /* append remaining path provided in command line */
     if( strncmp( cmds[1], "~/", 2 ) == 0 ||
         strncmp( cmds[1], "./", 2 ) == 0
       )
-        strcat( new_dir, &cmds[1][2] );
+        strcat( current_path, &cmds[1][2] );
     else
-        strcat( new_dir, cmds[1] );
+        strcat( current_path, cmds[1] );
 
-    /* see if any parent directories */
-    num_parents = count_parents( new_dir );
+    /* see if any parent directories (check for existence of '../') */
+    num_parents = count_parents( current_path );
 
-    /* if there are no parents to convert */
+    /* if there are no parents to convert, return path */
     if ( num_parents == 0 )
-        return new_dir;
+        return SUCCESS;
 
-    /* convert parent directories and append the rest */
-    char* loc = get_last_parent( new_dir );
-    long last_par_index = loc - new_dir; 
+    /* get the index of the last parent within the string */
+    char* loc = get_last_parent( current_path );
+    long last_par_index = loc - current_path; 
 
     /* get parent dir absolute path */
     parent_dir = get_parent_dir( num_parents );
 
     /* if no directories to append after parents */
-    if ( strlen( new_dir ) - 2 == last_par_index )
+    if ( strlen( current_path ) - 2 == last_par_index )
     {
-        free( new_dir );
-        new_dir = NULL;
-        return parent_dir;
+        sprintf( current_path, "%s/", parent_dir );
+        free( parent_dir );
+        return SUCCESS;
     }
 
-    /* append any remaining directories */
-    free( new_dir );
-    new_dir = (char*) malloc( ( strlen( parent_dir ) +
-                            ( strlen( new_dir ) - last_par_index - 2 )  +
-                            1 )
-                            * sizeof(char) );
-    if( new_dir == NULL )
-        return NULL;
+    /* append any remaining directories after parents */
+    sprintf( current_path, "%s/%s", parent_dir, loc + 2 );
 
-    strcpy( new_dir, parent_dir );
-    strcat( new_dir, loc + 2 );
-
-    free( parent_dir );
-    parent_dir = NULL;
-
-    return new_dir;
+    return SUCCESS;
 } /* end set_new_dir() */
 
 
@@ -668,7 +639,7 @@ int count_parents( const char* str )
         return 0;
 
     return 1 + count_parents( loc + 2 );
-}
+} /* end count_parents */
 
 
 /*********************************************************************/
@@ -694,16 +665,15 @@ char* get_last_parent( const char* str )
     }
 
     return loc; 
-}
-
-
-
-
+} /* end get_last_parent() */
 
 
 
 
 /* LOW LEVEL FUNCTIONS START POINT */
+
+
+
 
 
 /*********************************************************************/
@@ -765,4 +735,4 @@ int is_reg_file( const char* fileName )
         return 0;
 
     return S_ISREG( buffer.st_mode );
-}
+} /* end is_reg_file() */
