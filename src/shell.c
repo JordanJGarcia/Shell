@@ -20,12 +20,16 @@
 #include <readline/history.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 /* for custom libraries */
 #include "../lib/alias.h"
 #include "../lib/string_module.h"
 #include "../lib/command_history.h"
+#include "../lib/execution.h"
 
 /* macros */
 #define PROMPT_SIZE 255
@@ -36,6 +40,7 @@
 #define PWD "PWD"
 #define USER "USER"
 #define HOST "HOST"
+
 
 /* global variables */
 //char*   cmd = NULL; 
@@ -77,10 +82,9 @@ int     handle_echo( void );
 
 /* program execution function prototypes */
 int     handle_program_execution( void );
-void    execute( void );
-void    execute_redirection( char ); /* char signals I|O redirection */
-void    execute_multiple_redirection( void );
-void    execute_pipe( void );
+int     is_redirection( void );
+int     is_pipe( void );
+
 
 
 /*********************************************************************/
@@ -163,6 +167,16 @@ void start_shell( void )
 }/* end start_shell() */
 
 
+/*********************************************************************/
+/*                                                                   */
+/*      Function name: process_quoted_string                         */
+/*      Return type:   int                                           */
+/*      Parameter(s):  none                                          */
+/*                                                                   */
+/*      Description:                                                 */
+/*          Processes a quoted string for echo command.              */
+/*                                                                   */
+/*********************************************************************/
 int process_quoted_string( char* str, int index )
 {
     char** split_string = NULL;
@@ -227,7 +241,7 @@ int process_commands( void )
     /* add to history */
     add_cmds_to_history( cmds, n_cmds );
 
-    print_commands();
+    //print_commands();
     return SUCCESS;
 }/* end process_commands */
 
@@ -247,6 +261,7 @@ void handle_history( void )
     if ( strcmp( cmds[0], "history" ) == 0 )
         print_history( stdout ); 
 }
+
 
 /*********************************************************************/
 /*                                                                   */
@@ -317,8 +332,6 @@ int handle_env_vars( void )
     }
     return SUCCESS; 
 }
-
-// handle punctuation issues here. 
 
 
 /*********************************************************************/
@@ -439,8 +452,44 @@ int handle_echo( void )
 /*********************************************************************/
 int handle_program_execution( void )
 {
-    //puts( "\n" );
-    //print_commands();
+    puts( "Attempting to execute..." );
+    //execute();
+
+    int redirection_type = is_redirection(); 
+    int pipe = is_pipe();
+
+    puts( "after redirection type calculated..." );
+    switch ( redirection_type )
+    {
+        case INPUT:
+            // input redirection
+            if ( pipe == PIPE )
+                ;//redirect_input_and_pipe();
+
+            //redirect_input();
+            break;
+        case OUTPUT:
+            // output redirection
+            if ( pipe == PIPE )
+                ;//redirect_output_and_pipe();
+
+            redirect_output(); 
+            break;
+        case INOUT:
+            // input & output redirection
+            if ( pipe == PIPE )
+                ;//redirect_both_and_pipe();
+
+            //redirect_both();
+            break;
+        default:
+            // no redirection
+            if ( pipe == PIPE )
+                ;//execute_and_pipe(); 
+
+            execute();
+            break; 
+    }
     return SUCCESS;
 }
 
@@ -685,6 +734,70 @@ char* get_last_parent( const char* str )
 
     return loc; 
 } /* end get_last_parent() */
+
+
+/*********************************************************************/
+/*                                                                   */
+/*      Function name: is_redirection                                */
+/*      Return type:   int                                           */
+/*      Parameter(s):  None                                          */
+/*                                                                   */
+/*      Description:                                                 */
+/*          returns a value depending on type of redirection.        */
+/*              0: no redirection                                    */
+/*              1: output redirection                                */
+/*             -1: input redirection                                 */
+/*              2: both input and output redirection.                */
+/*                                                                   */
+/*********************************************************************/
+int is_redirection( void )
+{
+    int ctr = 0;
+    int o_flag = FAILURE, i_flag = FAILURE;
+
+    for ( ; ctr < n_cmds; ctr++ )
+    {
+        if ( strcmp( cmds[ctr], "<" ) == 0 )
+            i_flag = SUCCESS;
+
+        if ( strcmp( cmds[ctr], ">" ) == 0 )
+            o_flag = SUCCESS; 
+    }
+
+    if ( o_flag == SUCCESS && i_flag == SUCCESS )
+        return INOUT;
+    else if ( o_flag == SUCCESS ) 
+        return OUTPUT;
+    else if ( i_flag == SUCCESS )
+        return INPUT;
+
+    return FAILURE; 
+}
+
+
+/*********************************************************************/
+/*                                                                   */
+/*      Function name: is_pipe                                       */
+/*      Return type:   int                                           */
+/*      Parameter(s):  None                                          */
+/*                                                                   */
+/*      Description:                                                 */
+/*          returns a value depending on type of redirection.        */
+/*              0: no pipe                                           */
+/*              3: pipe                                              */
+/*********************************************************************/
+int is_pipe( void )
+{
+    int ctr = 0;
+    int p_flag = FAILURE;
+
+    for ( ; ctr < n_cmds; ctr++ )
+    {
+        if ( strcmp( cmds[ctr], "|" ) == 0 )
+            return PIPE;
+    }
+    return FAILURE;
+}
 
 
 
