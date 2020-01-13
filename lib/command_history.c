@@ -60,7 +60,7 @@ void print_history( FILE *fp )
     int ctr = 0, i = 0; 
     while( ctr < history_count )
     {
-        printf( "\t" );
+        fprintf( fp, "\t" );
         for ( ; i < history[ctr].n_cmds; i++ )
             fprintf( fp, "%s ", history[ctr].cmds[i] );
 
