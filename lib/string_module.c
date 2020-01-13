@@ -287,3 +287,28 @@ int parse_string( char* line, char*** cmds, int* n_cmds )
     }
     return SUCCESS;
 } /* end split_input() */
+
+
+/*********************************************************************/
+/*                                                                   */
+/*      Function name: find_string                                   */
+/*      Return type:   int                                           */
+/*      Parameter(s):  1                                             */
+/*          char***: pointer to the arr of strings we are searching. */
+/*                                                                   */
+/*      Description:                                                 */
+/*          returns the index of location of string in array, -1 if  */
+/*          not found.                                               */
+/*                                                                   */
+/*********************************************************************/
+int find_string( const char* str, char*** arr, int arr_size )
+{
+    int ctr = 0;
+
+    for ( ; ctr < arr_size; ctr++ )
+    {
+        if ( strcmp( (*arr)[ctr], str ) == 0 )
+            return ctr;
+    }
+    return -1;
+}
