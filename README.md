@@ -16,7 +16,7 @@ JShell will support many basic features including:
  2. Aliases
     - You can add aliases that exist only while JShell is running.
     - You can remove aliases that have been added during the programs lifetime.
-    - NOT IMPLEMENTED YET - The shell will look through your .j_profile file (in $HOME directory) to automatically add any  aliases you have in there. 
+    - NOT IMPLEMENTED YET - The shell will look through your $HOME/.j_profile file to automatically add any  aliases you have in there. 
  
 3. Translation of environmental variables
     - Will translate environmental variables (if defined) whether inside quotes or not.
