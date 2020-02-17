@@ -180,7 +180,7 @@ int move_strings_down( char*** arr, int* arr_size, int add_arr_size,
 /*********************************************************************/
 int add_strings( char*** to, char*** from, int start, int n_indices )
 {
-    puts( "In add_strings..." );
+    //puts( "In add_strings..." );
     int stop = start + n_indices; 
     int ind = 0;
 

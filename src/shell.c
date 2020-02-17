@@ -60,7 +60,7 @@ int     is_reg_file( const char* );
 void    print_commands( void );
 
 /* history handling */
-void    handle_history( void );
+int     handle_history( void );
 
 /* alias handling */
 int     handle_aliases( void );
@@ -126,6 +126,7 @@ void start_shell( void )
 
     char* line = NULL;
 
+    /* begin infinite loop to control shell */
     while ( 1 )
     {
         /* prompt then read line - line is allocated with malloc(3) */
@@ -143,7 +144,7 @@ void start_shell( void )
         else
             parse_string( line, &cmds, &n_cmds );
 
-        print_commands();
+        //print_commands();
 
 
         if ( cmds != NULL )
@@ -202,7 +203,11 @@ int process_quoted_string( char* str, int index )
 /*      Parameter(s):  none                                          */
 /*                                                                   */
 /*      Description:                                                 */
-/*          Accepts parsed commands for appropriate processing       */
+/*          Handles parsed commands for appropriate processing.      */
+/*          After processing certain commands, there is no need to   */
+/*          process the rest. I.E. printing history means we can     */
+/*          print the command history and continue without worrying  */
+/*          about handling other events in this loop iteration.      */
 /*                                                                   */
 /*********************************************************************/
 int process_commands( void )
@@ -217,20 +222,35 @@ int process_commands( void )
     // suggested order of processing: 
 
     // handle printing of history
-    handle_history(); 
+    if( handle_history() == SUCCESS )
+    {
+        add_cmds_to_history( cmds, n_cmds );
+        return SUCCESS; 
+    }
 
     // handle all alias processing 
     if ( handle_aliases() == FAILURE )
+    {
+        add_cmds_to_history( cmds, n_cmds );
         return FAILURE;
+    }
 
     // handle environmental variable translations
     handle_env_vars();
 
     // handle directory changes
-    handle_directory_change(); 
+    if( handle_directory_change() == SUCCESS )
+    {
+        add_cmds_to_history( cmds, n_cmds );
+        return SUCCESS; 
+    }
 
     // handle echo command 
-    handle_echo(); 
+    if( handle_echo() == SUCCESS )
+    {
+        add_cmds_to_history( cmds, n_cmds );
+        return SUCCESS; 
+    }
         
     // handle program execution
     handle_program_execution();
@@ -249,28 +269,35 @@ int process_commands( void )
 /*********************************************************************/
 /*                                                                   */
 /*      Function name: handle_history                                */
-/*      Return type:   void                                          */
+/*      Return type:   int                                           */
 /*      Parameter(s):  none                                          */
 /*                                                                   */
 /*      Description:                                                 */
 /*          prints history of commands entered.                      */
 /*                                                                   */
 /*********************************************************************/
-void handle_history( void )
+int handle_history( void )
 {
     if ( strcmp( cmds[0], "history" ) == 0 )
+    {
         print_history( stdout ); 
+        return SUCCESS;
+    }
+    return FAILURE;
 }
 
 
 /*********************************************************************/
 /*                                                                   */
 /*      Function name: check_for_alias                               */
-/*      Return type:   void                                          */
+/*      Return type:   int                                           */
 /*      Parameter(s):  none                                          */
 /*                                                                   */
 /*      Description:                                                 */
-/*          checks for aliases and converts them if found            */
+/*          Checks for aliases and converts them if found.           */
+/*          Return failure anytime an alias isnt being translated.   */
+/*          This is done so that way we know when we dont need to    */
+/*          use the alias any further.                               */
 /*                                                                   */
 /*********************************************************************/
 int handle_aliases( void )
@@ -283,6 +310,7 @@ int handle_aliases( void )
             return FAILURE;
         }
         add_alias( cmds[1], cmds[3] );
+        return FAILURE;
     }
     else if ( strcmp( cmds[0], "unalias" ) == 0 )
     {
@@ -293,6 +321,7 @@ int handle_aliases( void )
 
         }
         remove_alias( cmds[1] );
+        return FAILURE;
     }
     else if ( n_cmds == 2 && 
               strcmp( cmds[0], "show" ) == 0 && 
@@ -300,6 +329,7 @@ int handle_aliases( void )
             )
     {
         print_aliases();
+        return FAILURE;
     }
     else
         check_for_alias();    
@@ -557,8 +587,8 @@ int convert_env_var( int index )
         fprintf(stderr, "Could not alocate memory for env variable.\n" );
         return FAILURE;
     }
-    strcpy( cmds[index + 1], env_var );
 
+    strcpy( cmds[index + 1], env_var );
 
     /* move all commands down one, removing '$' */
     for( ; index < n_cmds - 1; index++ )

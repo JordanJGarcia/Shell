@@ -139,6 +139,10 @@ void parse_translated( const char* line )
 /*      Parameter(s):                                                */
 /*          char* found: starting point to move values down          */
 /*                                                                   */
+/*      Description:                                                 */
+/*          Adjusts the array of aliases when removing an alias by   */
+/*          moving all respective alias instances down an index.     */
+/*                                                                   */
 /*********************************************************************/
 void adjust_aliases( alias* found )
 {
@@ -146,9 +150,12 @@ void adjust_aliases( alias* found )
     for ( ; found != &alias_arr[n_aliases-1]; found++ )
     {
         /* replace original with next original */
+
+        /* free memory for current original */
         free( found->original );
         found->original = NULL;
 
+        /* moving next original into current original */
         if ( (found->original = (char*) malloc(
             (strlen((found+1)->original)) * sizeof(char))) == NULL
           )
@@ -163,6 +170,8 @@ void adjust_aliases( alias* found )
         strcpy( found->original, (found+1)->original );
 
         /* replace translated with next translated */
+
+        /* freeing memory for current translated */
         for ( int i = 0; i < found->n_cmds; i++ )
         {
             free( found->translated[i] );
@@ -172,6 +181,7 @@ void adjust_aliases( alias* found )
         free( found->translated );
         found->translated = NULL;
 
+        /* moving next translated into current translated */
         if ( (found->translated = (char**) malloc(
             ((found+1)->n_cmds) * sizeof(char*))) == NULL
            )

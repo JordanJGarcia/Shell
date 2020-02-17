@@ -34,6 +34,7 @@ extern char** cmds;
 extern int n_cmds;
 
 /* function prototypes */
+void 	process_execution( void );
 void    execute( void );
 void    redirect_input( void );
 void 	redirect_output( void );
