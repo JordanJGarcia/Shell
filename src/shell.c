@@ -9,7 +9,17 @@
 /*********************************************************************/
 
 
-// NEED TO FIGURE OUT HOW TO INCORPORATE PROCESS_QUOTED_STRING() INTO PROGRAM 
+// NEED TO FIGURE OUT HOW TO INCORPORATE PROCESS_QUOTED_STRING() INTO PROGRAM ** idk if this is necessary anymore, maybe should improve it
+
+// BUGS:
+    // Cannot do redirection with echo...
+
+// NEXT STEPS:
+    // 1) figure out how to efficiently handle program execution in all its forms
+    // 2) implement it
+    // 3) fix any ineffecient areas of the system
+    // 4) add ability to read in permanent aliases from .j_profile
+    // 5) add any other features you think of! :D
 
 
 #include <stdio.h>
@@ -488,7 +498,7 @@ int handle_program_execution( void )
     int redirection_type = is_redirection(); 
     int pipe = is_pipe();
 
-    puts( "after redirection type calculated..." );
+    //puts( "after redirection type calculated..." );
     switch ( redirection_type )
     {
         case INPUT:
@@ -496,7 +506,7 @@ int handle_program_execution( void )
             if ( pipe == PIPE )
                 ;//redirect_input_and_pipe();
 
-            //redirect_input();
+            redirect_input();
             break;
         case OUTPUT:
             // output redirection

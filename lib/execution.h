@@ -34,12 +34,19 @@ extern char** cmds;
 extern int n_cmds;
 
 /* function prototypes */
-void 	process_execution( void );
+
+/* standard program execution */
 void    execute( void );
+
+/* I/O redirections */
 void    redirect_input( void );
 void 	redirect_output( void );
-void    redirect_both( void );
+void    redirect_output_and_input( void );
+
+/* standard pipelines */
 void    execute_and_pipe( void );
+
+/* pipelines and redirections */
 void 	redirect_input_and_pipe( void );
 void 	redirect_output_and_pipe( void );
 void 	redirect_both_and_pipe( void );
