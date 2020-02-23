@@ -175,12 +175,12 @@ int move_strings_down( char*** arr, int* arr_size, int add_arr_size,
 /*          int n_indices: num indices to copy to.                   */
 /*                                                                   */
 /*      Description:                                                 */
-/*          moves strings from start onwards down n_indices in arr.  */
+/*          moves all strings in {from} to n_indices in {to}         */
+/*          beginning at to[start].                                  */
 /*                                                                   */
 /*********************************************************************/
 int add_strings( char*** to, char*** from, int start, int n_indices )
 {
-    //puts( "In add_strings..." );
     int stop = start + n_indices; 
     int ind = 0;
 
@@ -192,12 +192,11 @@ int add_strings( char*** to, char*** from, int start, int n_indices )
                                         sizeof(char) );
 
         if( (*to)[start] == NULL )
-            return FAILURE; 
+            return FAILURE;
 
         /* copy old string into new arr */
         strcpy( (*to)[start], (*from)[ind++] );
     }
-
     return SUCCESS;
 }
 
@@ -240,35 +239,32 @@ int parse_string( char* line, char*** cmds, int* n_cmds )
         }
         else if ( i == line_size - 1 ) /* end of line */
         {
-            if( !isspace( line[i] ) )
+            if( !isspace( line[i] ) && ( line[i] != '\"' || line[i] == '\'' ) )
                 build_string( line[i], &cmd );
 
             add_string( &cmd, cmds, n_cmds );
         }
-        else if ( line[i] == '\"' || line[i] == '\'' ) /* string in quotes */
+        else if ( line[i] == '\"' || line[i] == '\'' )/* string in quotes */
         {
-            char term = line[i++];
-
-            /* set quote marker */
-            if ( *n_cmds > 0 && strcmp( (*cmds)[0], "alias" ) != 0 )
+            /* this section only applies to aliases */
+            if ( strcmp( (*cmds)[0], "alias" ) == 0 )
             {
-                build_string( '*', &cmd );
-                build_string( '*', &cmd );
-            }
+                char term = line[i++];
 
-            /* build command with everything inside quotes */
-            do
-            {
-                /* if user forgot end quote, continue */
-                if ( i == line_size - 1 )
+                /* build command with everything inside quotes */
+                do
                 {
-                    build_string( line[i], &cmd );
-                    break;
-                } 
-                build_string( line[i++], &cmd );
-            } while( line[i] != term );
+                    /* if user forgot end quote, continue */
+                    if ( i == line_size - 1 )
+                    {
+                        build_string( line[i], &cmd );
+                        break;
+                    } 
+                    build_string( line[i++], &cmd );
+                } while( line[i] != term );
 
-            add_string( &cmd, cmds, n_cmds );
+                add_string( &cmd, cmds, n_cmds );
+            }
         }
         else if ( isspace( line[i] ) ) /* spacing */
         {

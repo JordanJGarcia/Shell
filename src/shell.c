@@ -8,9 +8,6 @@
 /*                                                                   */
 /*********************************************************************/
 
-
-// NEED TO FIGURE OUT HOW TO INCORPORATE PROCESS_QUOTED_STRING() INTO PROGRAM ** idk if this is necessary anymore, maybe should improve it
-
 // BUGS:
     // Cannot do redirection with echo...
 
@@ -62,7 +59,6 @@ char    current_path[PROMPT_SIZE];
 void    start_shell( void );
 void    parse_input( char* );
 int     process_commands( void );
-int     process_quoted_string( char*, int );
 
 /* helper function (low level) */
 int     is_directory( const char* );
@@ -86,9 +82,6 @@ char*   get_parent_dir( int );
 int     set_new_dir( void );
 int     count_parents( const char* );
 char*   get_last_parent( const char* str );
-
-/* echo handling */
-int     handle_echo( void );
 
 /* program execution function prototypes */
 int     handle_program_execution( void );
@@ -180,34 +173,6 @@ void start_shell( void )
 
 /*********************************************************************/
 /*                                                                   */
-/*      Function name: process_quoted_string                         */
-/*      Return type:   int                                           */
-/*      Parameter(s):  none                                          */
-/*                                                                   */
-/*      Description:                                                 */
-/*          Processes a quoted string for echo command.              */
-/*                                                                   */
-/*********************************************************************/
-int process_quoted_string( char* str, int index )
-{
-    char** split_string = NULL;
-    int n_strings = 0; 
-
-    /* go through string and parse it */
-    parse_string( str, &split_string, &n_strings );
-
-    /* move_strings_down by number of commands in alias */
-    move_strings_down( &cmds, &n_cmds, n_strings, index );
-
-    /* add_strings() to cmds */
-    add_strings( &cmds, &split_string, index, n_strings );
-
-    return SUCCESS;
-}
-
-
-/*********************************************************************/
-/*                                                                   */
 /*      Function name: process_commands                              */
 /*      Return type:   int                                           */
 /*      Parameter(s):  none                                          */
@@ -250,13 +215,6 @@ int process_commands( void )
 
     // handle directory changes
     if( handle_directory_change() == SUCCESS )
-    {
-        add_cmds_to_history( cmds, n_cmds );
-        return SUCCESS; 
-    }
-
-    // handle echo command 
-    if( handle_echo() == SUCCESS )
     {
         add_cmds_to_history( cmds, n_cmds );
         return SUCCESS; 
@@ -442,45 +400,6 @@ int handle_directory_change( void )
 
 /*********************************************************************/
 /*                                                                   */
-/*      Function name: handle_echo                                   */
-/*      Return type:   void                                          */
-/*      Parameter(s):  none                                          */
-/*                                                                   */
-/*      Description:                                                 */
-/*          mimics shell echo utility. Does not translate            */
-/*          environmental variables inside quotes. :(                */
-/*                                                                   */
-/*********************************************************************/
-int handle_echo( void ) 
-{
-    if ( strcmp( cmds[0], "echo" ) != 0 )
-        return FAILURE; 
-
-    int ctr = 1;   
-
-    for ( ; ctr < n_cmds; ctr++ )
-    {
-        if ( strncmp( cmds[ctr], QUOTE_MARKER, 2 ) == 0 &&
-             strlen( cmds[ctr] ) > 2 
-           )
-        {
-            process_quoted_string( cmds[ctr], ctr );
-            handle_env_vars(); 
-
-            /* disregard the quote signals (**) */
-            printf( "%s ", &cmds[ctr][2] );
-        }
-        else
-            printf( "%s ", cmds[ctr] );
-    }
-
-    puts( " " );
-    return SUCCESS;  
-}
-
-
-/*********************************************************************/
-/*                                                                   */
 /*      Function name: handle_program_execution                      */
 /*      Return type:   int                                           */
 /*      Parameter(s):  none                                          */
@@ -492,7 +411,7 @@ int handle_echo( void )
 /*********************************************************************/
 int handle_program_execution( void )
 {
-    puts( "Attempting to execute..." );
+    //puts( "Attempting to execute..." );
     //execute();
 
     int redirection_type = is_redirection(); 
@@ -520,18 +439,26 @@ int handle_program_execution( void )
             if ( pipe == PIPE )
                 ;//redirect_both_and_pipe();
 
-            //redirect_both();
+            redirect_input_and_output();
             break;
         default:
             // no redirection
             if ( pipe == PIPE )
-                ;//execute_and_pipe(); 
+                execute_and_pipe( 0 ); 
+            else
+                execute();
 
-            execute();
             break; 
     }
     return SUCCESS;
 }
+
+
+
+
+/* LOW LEVEL FUNCTIONS START POINT */
+
+
 
 
 /*********************************************************************/
@@ -838,14 +765,6 @@ int is_pipe( void )
     }
     return FAILURE;
 }
-
-
-
-
-/* LOW LEVEL FUNCTIONS START POINT */
-
-
-
 
 
 /*********************************************************************/
