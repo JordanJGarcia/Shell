@@ -299,6 +299,7 @@ int parse_string( char* line, char*** cmds, int* n_cmds )
 /*********************************************************************/
 int find_string( const char* str, char*** arr, int arr_size )
 {
+    //printf( "new_start = %s\narr_size = %d\n", (*arr)[0], arr_size );
     int ctr = 0;
 
     for ( ; ctr < arr_size; ctr++ )
@@ -306,5 +307,6 @@ int find_string( const char* str, char*** arr, int arr_size )
         if ( strcmp( (*arr)[ctr], str ) == 0 )
             return ctr;
     }
+    puts( "return -1" );
     return -1;
 }
