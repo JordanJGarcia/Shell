@@ -259,14 +259,11 @@ void execute_and_pipe( int pos )
     }
 
     /* set stdin to be the read end of the pipe */
-    if ( fd_in != 0 )
-        dup2( fd_in, 0 );
+    //if ( fd_in != 0 )
+      //  dup2( fd_in, 0 );
 
     /* execute last program in pipeline */
-    execvp( current_program[0], current_program );
-    
-    /* execvp returns only on error */
-    fprintf( stderr, "Error: Can't execute %s\n", current_program[0] );
+    pid = generate_process( fd_in, 1, &current_program );
 
     return;
 } /* end execute_and_pipe */
@@ -306,9 +303,6 @@ int generate_process( int fd_in, int fd_out, char*** prog )
             dup2( fd_out, 1 );
             close( fd_out );
         }
-
-        //puts( "in child process..." );
-
         return execvp( (*prog)[0], (*prog) );
     } /* parent process */
 
@@ -333,8 +327,6 @@ int generate_process( int fd_in, int fd_out, char*** prog )
     /* allow for ctrl-c & ctrl-\ */
     signal(SIGINT, istat);
     signal(SIGQUIT, qstat);
-
-    //puts( "in parent process...." );
 
     return pid;
 }
