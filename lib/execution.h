@@ -34,21 +34,25 @@ extern char** cmds;
 extern int n_cmds;
 
 /* function prototypes */
+int     generate_process( int fd_in, int fd_out, char*** prog );
 
 /* standard program execution */
 void    execute( void );
 
 /* I/O redirections */
 void    redirect_input( void );
-void 	redirect_output( void );
-void    redirect_output_and_input( void );
+void    redirect_output( void );
+void    redirect_input_and_output( void );
 
 /* standard pipelines */
-void    execute_and_pipe( void );
+void    execute_and_pipe( int );
 
 /* pipelines and redirections */
-void 	redirect_input_and_pipe( void );
-void 	redirect_output_and_pipe( void );
-void 	redirect_both_and_pipe( void );
+void    redirect_input_and_pipe( void );
+void    redirect_output_and_pipe( void );
+void    redirect_both_and_pipe( void );
+
+
+int     count_pipes( void );
 
 #endif
