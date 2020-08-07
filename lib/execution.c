@@ -77,8 +77,7 @@ void redirect_input( void )
         return;
     }
 
-    /* set last index of commands 
-       (before redirection operator)to NULL for execvp */
+    /* set last index to NULL for execvp */
     cmds[in_file_pos] = NULL;
 
     /* spawn process and execute prog */
@@ -287,7 +286,8 @@ void execute_and_pipe( int n_pipes )
             /* create child process */ 
             if( ( pid = fork() ) == 0 )
             {
-                /* set stdout of first cmd to write end of current pipe */
+                /* set stdout of current cmd to write end of current pipe */
+                /* set stdin of current cmd to read end of previous pipe */
                 dup2( pipe_fd[i-1][READ_END], STDIN_FILENO );
                 dup2( pipe_fd[i][WRITE_END], STDOUT_FILENO );
 
@@ -311,7 +311,7 @@ void execute_and_pipe( int n_pipes )
     /* run final command */
     if( ( pid = fork() ) == 0 )
     {
-        /* set stdin of first cmd to write end of current pipe */
+        /* set stdin of first cmd to write end of last pipe */
         dup2( pipe_fd[n_pipes - 1][READ_END], STDIN_FILENO );
 
         /* close all pipes in child now that its been duped */
@@ -322,7 +322,7 @@ void execute_and_pipe( int n_pipes )
             close( pipe_fd[ctr][WRITE_END] );
         }
 
-        /* stdin not affected yet */
+        /* execute last program */
         execvp( current_program[0], current_program );
     }
 
@@ -360,13 +360,9 @@ int generate_process( int fd_in, int fd_out, char*** prog )
     int status, w;
     void (*istat)(int), (*qstat)(int);
 
-    printf( "Inside generate_process: \tfd_out = %d\tfd_in = %d\tprog = %s\n", fd_out, fd_in, (*prog)[0] );
     /* if in child process */
     if( ( pid = fork() ) == 0 )
     {
-        puts( "inside child process..." );
-        printf("fd_in = %d\tfd_out = %d\n", fd_in, fd_out );
-
         /* if we are not directing to stdout, reassign output */
         if ( fd_out != 1 )
         {
@@ -377,12 +373,10 @@ int generate_process( int fd_in, int fd_out, char*** prog )
         /* if we are not getting from stdin, reassign input. */
         if ( fd_in != 0 )
         {
-            printf( "Duping %d to stdin...", fd_in );
             dup2( fd_in, STDIN_FILENO );
             close( fd_in );
         }
 
-        puts("attempting to execute..." );
         return execvp( (*prog)[0], (*prog) );
     } /* parent process */
 
@@ -394,11 +388,11 @@ int generate_process( int fd_in, int fd_out, char*** prog )
     qstat = signal(SIGQUIT, SIG_IGN);
 
     /* close descriptors if necessary in parent */
-    //if ( fd_in != 0 )
-      //  close( fd_in );
+    if ( fd_in != 0 )
+        close( fd_in );
 
-    //if ( fd_out != 1 )
-      //  close( fd_out );
+    if ( fd_out != 1 )
+        close( fd_out );
 
     /* wait for child processes to finish */
     while( ( w = wait( &status ) ) != pid && w != -1 )
@@ -409,76 +403,4 @@ int generate_process( int fd_in, int fd_out, char*** prog )
     signal(SIGQUIT, qstat);
 
     return pid;
-}
-
-
-
-/*********************************************************************/
-/*                                                                   */
-/*      Function name: generate_process_for_pipe                     */
-/*      Return type:   void                                          */
-/*      Parameter(s):  None                                          */
-/*                                                                   */
-/*      Description:                                                 */
-/*          creates a process and executes a program.                */
-/*                                                                   */
-/*********************************************************************/
-int generate_process_for_pipe( int fd_in, int fd_out, char*** prog )
-{
-    pid_t pgid = getpgrp();
-    pid_t pid; 
-    int status, w;
-    void (*istat)(int), (*qstat)(int);
-
-    printf( "Inside generate_process_for_pipe: \tfd_out = %d\tfd_in = %d\tprog = %s\n", fd_out, fd_in, (*prog)[0] );
-    /* if in child process */
-    if( ( pid = fork() ) == 0 )
-    {
-        puts( "inside child process..." );
-        printf("fd_in = %d\tfd_out = %d\n", fd_in, fd_out );
-
-        /* if we are not directing to stdout, reassign output */
-        if ( fd_out != 1 )
-        {
-            dup2( fd_out, STDOUT_FILENO );
-            close( fd_out );
-        }
-
-        /* if we are not getting from stdin, reassign input. */
-        if ( fd_in != 0 )
-        {
-            printf( "Duping %d to stdin...", fd_in );
-            dup2( fd_in, STDIN_FILENO );
-            close( fd_in );
-        }
-
-        puts("attempting to execute..." );
-        return execvp( (*prog)[0], (*prog) );
-    } /* parent process */
-
-    /* set process group ID */
-    setpgid( pid, pgid );
-
-    /* ignore ctrl-c & ctrl-\ */
-    istat = signal(SIGINT, SIG_IGN);
-    qstat = signal(SIGQUIT, SIG_IGN);
-
-    /* close descriptors if necessary in parent */
-    //if ( fd_in != 0 )
-      //  close( fd_in );
-
-    //if ( fd_out != 1 )
-      //  close( fd_out );
-
-    /* wait for child processes to finish */
-    //while( ( w = wait( &status ) ) != pid && w != -1 )
-      //  continue;
-
-    /* allow for ctrl-c & ctrl-\ */
-    signal(SIGINT, istat);
-    signal(SIGQUIT, qstat);
-
-    return pid;
-}
-
-
+} /* end generate_process */

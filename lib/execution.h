@@ -55,7 +55,4 @@ void    redirect_input_and_pipe( void );
 void    redirect_output_and_pipe( void );
 void    redirect_both_and_pipe( void );
 
-
-int     count_pipes( void );
-
 #endif

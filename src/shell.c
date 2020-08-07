@@ -413,14 +413,10 @@ int handle_directory_change( void )
 /*********************************************************************/
 int handle_program_execution( void )
 {
-    //puts( "Attempting to execute..." );
-    //execute();
-
-    int redirection_type = is_redirection(); 
+    int r_flag = is_redirection(); 
     int p_flag = is_pipe();
 
-    //puts( "after redirection type calculated..." );
-    switch ( redirection_type )
+    switch ( r_flag )
     {
         case INPUT:
             // input redirection
