@@ -53,7 +53,7 @@ alias* add_alias( const char* og, char* trns )
     place_tokens();
 
     /* sort array for bsearch() */
-    qsort( alias_arr, (size_t)n_aliases + 1, sizeof(alias_arr[0]), alias_cmp );
+    qsort( alias_arr, (size_t)(n_aliases + 1), sizeof(alias_arr[0]), alias_cmp );
 
     return &alias_arr[n_aliases++];
 } /* end add_alias() */

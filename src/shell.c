@@ -53,6 +53,7 @@
 //char*   cmd = NULL; 
 char**  cmds = NULL; 
 int     n_cmds = 0; 
+int     n_pipes = 0; 
 char    current_path[PROMPT_SIZE];
 
 /* utility function prototypes */
@@ -145,7 +146,7 @@ void start_shell( void )
             return;
         }
         else
-            parse_string( line, &cmds, &n_cmds );
+            parse_string( line, &cmds, &n_cmds, &n_pipes );
 
         //print_commands();
 
@@ -163,6 +164,7 @@ void start_shell( void )
         free( cmds );
 
         n_cmds = 0;
+        n_pipes = 0;
     }
 
     free_history();
@@ -415,36 +417,36 @@ int handle_program_execution( void )
     //execute();
 
     int redirection_type = is_redirection(); 
-    int pipe = is_pipe();
+    int p_flag = is_pipe();
 
     //puts( "after redirection type calculated..." );
     switch ( redirection_type )
     {
         case INPUT:
             // input redirection
-            if ( pipe == PIPE )
+            if ( p_flag == SUCCESS )
                 ;//redirect_input_and_pipe();
 
             redirect_input();
             break;
         case OUTPUT:
             // output redirection
-            if ( pipe == PIPE )
+            if ( p_flag == SUCCESS )
                 ;//redirect_output_and_pipe();
 
             redirect_output(); 
             break;
         case INOUT:
             // input & output redirection
-            if ( pipe == PIPE )
+            if ( p_flag == SUCCESS )
                 ;//redirect_both_and_pipe();
 
             redirect_input_and_output();
             break;
         default:
             // no redirection
-            if ( pipe == PIPE )
-                execute_and_pipe( 0 ); 
+            if ( p_flag == SUCCESS )
+                execute_and_pipe( n_pipes ); 
             else
                 execute();
 
@@ -755,15 +757,7 @@ int is_redirection( void )
 /*********************************************************************/
 int is_pipe( void )
 {
-    int ctr = 0;
-    int p_flag = FAILURE;
-
-    for ( ; ctr < n_cmds; ctr++ )
-    {
-        if ( strcmp( cmds[ctr], "|" ) == 0 )
-            return PIPE;
-    }
-    return FAILURE;
+    return ( n_pipes == 0 ? FAILURE : SUCCESS );
 }
 
 

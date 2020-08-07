@@ -210,13 +210,14 @@ int add_strings( char*** to, char*** from, int start, int n_indices )
 /*          char* line: line of commands user types in               */
 /*          char*** cmds: array to place strings in.                 */
 /*          int* n_cmds: pointer to length of array cmds.            */ 
+/*          int* n_pipes: pointer to number of pipes in cmds.        */
 /*                                                                   */
 /*      Description:                                                 */
 /*          This function splits a string into an array              */
 /*          of strings.                                              */
 /*                                                                   */
 /*********************************************************************/
-int parse_string( char* line, char*** cmds, int* n_cmds )
+int parse_string( char* line, char*** cmds, int* n_cmds, int* n_pipes )
 {
     int line_size = strlen( line );
     char* cmd = NULL;
@@ -230,6 +231,10 @@ int parse_string( char* line, char*** cmds, int* n_cmds )
              line[i] == ':'
            )
         {
+            /* Count pipes */
+            if ( line[i] == '|' )
+                *n_pipes += 1; 
+
             //puts( "Found special character!" );
             if( cmd != NULL )
                 add_string( &cmd, cmds, n_cmds );
@@ -307,6 +312,5 @@ int find_string( const char* str, char*** arr, int arr_size )
         if ( strcmp( (*arr)[ctr], str ) == 0 )
             return ctr;
     }
-    puts( "return -1" );
     return -1;
 }

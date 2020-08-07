@@ -22,7 +22,7 @@
 
 /* function prototypes */
 int 	build_string( char, char** );
-int 	parse_string( char* line, char*** cmds, int* n_cmds );
+int 	parse_string( char* line, char*** cmds, int* n_cmds, int* n_pipes );
 int     add_string( char**, char***, int* );
 int     add_strings( char***, char***, int, int );
 int 	move_strings_down( char***, int*, int, int );

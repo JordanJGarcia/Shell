@@ -82,7 +82,7 @@ void redirect_input( void )
     cmds[in_file_pos] = NULL;
 
     /* spawn process and execute prog */
-    pid = generate_process( fd_in, 1, &cmds );
+    pid = generate_process( fd_in, STDOUT_FILENO, &cmds );
 
     return;
 } /* end redirect_input */
@@ -128,7 +128,7 @@ void redirect_output( void )
     cmds[out_file_pos] = NULL;
 
     /* spawn process and run program */
-    pid = generate_process( 0, fd_out, &cmds );
+    pid = generate_process( STDIN_FILENO, fd_out, &cmds );
 
     return;
 } /* end redirect_output() */
@@ -210,60 +210,133 @@ void redirect_input_and_output( void )
 /*                                                                   */
 /*      Function name: execute_and_pipe                              */
 /*      Return type:   void                                          */
-/*      Parameter(s):  None                                          */
+/*      Parameter(s):                                                */
+/*          int n_pipes: number of pipes entered in command line.    */
 /*                                                                   */
 /*      Description:                                                 */
 /*          executes a program entered in the command line by user   */
-/*          and creates a pipeline to another program.               */
+/*          and creates pipelines through the programs.              */
 /*                                                                   */
 /*********************************************************************/
-
-    // divide programs into sepearate char arrays
-    // send each program through pipe 
-void execute_and_pipe( int pos )
+void execute_and_pipe( int n_pipes )
 {
     char** current_program = cmds;
-    int i, pid, fd_in, pipe_fd[2];
-    int num_pipes =  count_pipes();
-    int pipe_location = 0, prog_cmd_count = n_cmds;
-    printf( "Number of pipes = %d\n", num_pipes );
+    int pipe_loc, n_full_cmds = n_pipes + 1, n_words = n_cmds;
+    pid_t pid, pgid = getpgrp();
+    int i, pipe_fd[n_pipes][2];
+    int status, w;
+    void (*istat)(int), (*qstat)(int);
 
-    /* first process gets its input from stdin */
-    fd_in = 0;
-
-    for( i = 0; i < num_pipes; i++ )
+    /* create pipeline */
+    if ( pipe( pipe_fd[0] ) == -1 )
     {
-        /* get location of pipe and set it to null */
-        pipe_location = find_string( "|", &current_program, prog_cmd_count );
+        /* error handling */
+        fprintf( stderr, "Error: Calling pipe() failed.\n" );
+        return;
+    } /* pipe has been created */
 
-        if ( pipe_location != -1 )
-            cmds[pipe_location] = NULL;
-        else
-            return;
+    /* process programs */
+    for ( i = 0; i < n_pipes; i++ )
+    {
+        pipe_loc = find_string( "|", &current_program, n_words );
 
-        /* create pipeline */
-        if ( pipe( pipe_fd ) == -1 )
+        /* check that we found pipe_loc */
+        if ( pipe_loc == -1 && i != n_pipes - 1 )
         {
-            /* error handling */
-            fprintf( stderr, "Error: pipe failed.\n" );
+            fprintf( stderr, "Error: Could not get location of next pipe.\n" );
             return;
-        } /* pipe has been created */
+        }
 
-        pid = generate_process( fd_in, pipe_fd[1], &current_program );
+        /* adjust amount of words for next current_program */
+        n_words = n_words - pipe_loc; 
 
-        /* set current program as next program */
-        current_program = &current_program[pipe_location + 1];
-        prog_cmd_count -= ( pipe_location + 1 );
+        /* set pipe_loc to null so execvp knows where to stop */
+        current_program[pipe_loc] = NULL;
 
-        fd_in = pipe_fd[0];
+        /* first cmd running */ 
+        if ( i == 0 )
+        {
+            /* create child process */
+            if( ( pid = fork() ) == 0 )
+            {
+                /* duplicate write end of pipe to stdout */
+                dup2( pipe_fd[0][WRITE_END], STDOUT_FILENO );
+
+                /* close pipe in child now that its been duped */
+                close( pipe_fd[0][READ_END] );
+                close( pipe_fd[0][WRITE_END] );
+
+                /* stdin not affected yet, run program */
+                execvp( current_program[0], current_program );
+            } /* parent process */
+
+            /* wait for child processes to finish */
+            while( ( w = wait( &status ) ) != pid && w != -1 )
+                continue;
+        }
+        else
+        {
+            /* create another pipeline */
+            if ( pipe( pipe_fd[i] ) == -1 )
+            {
+                /* error handling */
+                fprintf( stderr, "Error: Calling pipe() failed.\n" );
+                return;
+            } /* pipe has been created */
+
+            /* create child process */ 
+            if( ( pid = fork() ) == 0 )
+            {
+                /* set stdout of first cmd to write end of current pipe */
+                dup2( pipe_fd[i-1][READ_END], STDIN_FILENO );
+                dup2( pipe_fd[i][WRITE_END], STDOUT_FILENO );
+
+                /* close all pipes in child now that its been duped */
+                int counter = 0; 
+                for ( ; counter <= i; counter++ )
+                {
+                    close( pipe_fd[counter][READ_END] );
+                    close( pipe_fd[counter][WRITE_END] );
+                }
+
+                /* execute program */
+                execvp( current_program[0], current_program );
+            }
+        }
+
+        /* adjust current_program to point to next cmd */
+        current_program = &current_program[pipe_loc + 1];
     }
 
-    /* set stdin to be the read end of the pipe */
-    //if ( fd_in != 0 )
-      //  dup2( fd_in, 0 );
+    /* run final command */
+    if( ( pid = fork() ) == 0 )
+    {
+        /* set stdin of first cmd to write end of current pipe */
+        dup2( pipe_fd[n_pipes - 1][READ_END], STDIN_FILENO );
 
-    /* execute last program in pipeline */
-    pid = generate_process( fd_in, 1, &current_program );
+        /* close all pipes in child now that its been duped */
+        int ctr = 0; 
+        for ( ; ctr < n_pipes; ctr++ )
+        {
+            close( pipe_fd[ctr][READ_END] );
+            close( pipe_fd[ctr][WRITE_END] );
+        }
+
+        /* stdin not affected yet */
+        execvp( current_program[0], current_program );
+    }
+
+    /* close all pipes in parent */
+    int ctr = 0; 
+    for ( ; ctr < n_pipes; ctr++ )
+    {
+        close( pipe_fd[ctr][READ_END] );
+        close( pipe_fd[ctr][WRITE_END] );
+    }
+
+    /* wait for child processes to finish */
+    while( ( w = wait( &status ) ) != pid && w != -1 )
+        continue;
 
     return;
 } /* end execute_and_pipe */
@@ -287,22 +360,29 @@ int generate_process( int fd_in, int fd_out, char*** prog )
     int status, w;
     void (*istat)(int), (*qstat)(int);
 
+    printf( "Inside generate_process: \tfd_out = %d\tfd_in = %d\tprog = %s\n", fd_out, fd_in, (*prog)[0] );
     /* if in child process */
     if( ( pid = fork() ) == 0 )
     {
-        /* if we are not getting from stdin, reassign input. */
-        if ( fd_in != 0 )
-        {
-            dup2( fd_in, 0 );
-            close( fd_in );
-        }
+        puts( "inside child process..." );
+        printf("fd_in = %d\tfd_out = %d\n", fd_in, fd_out );
 
         /* if we are not directing to stdout, reassign output */
         if ( fd_out != 1 )
         {
-            dup2( fd_out, 1 );
+            dup2( fd_out, STDOUT_FILENO );
             close( fd_out );
         }
+
+        /* if we are not getting from stdin, reassign input. */
+        if ( fd_in != 0 )
+        {
+            printf( "Duping %d to stdin...", fd_in );
+            dup2( fd_in, STDIN_FILENO );
+            close( fd_in );
+        }
+
+        puts("attempting to execute..." );
         return execvp( (*prog)[0], (*prog) );
     } /* parent process */
 
@@ -314,11 +394,11 @@ int generate_process( int fd_in, int fd_out, char*** prog )
     qstat = signal(SIGQUIT, SIG_IGN);
 
     /* close descriptors if necessary in parent */
-    if ( fd_in != 0 )
-        close( fd_in );
+    //if ( fd_in != 0 )
+      //  close( fd_in );
 
-    if ( fd_out != 1 )
-        close( fd_out );
+    //if ( fd_out != 1 )
+      //  close( fd_out );
 
     /* wait for child processes to finish */
     while( ( w = wait( &status ) ) != pid && w != -1 )
@@ -332,32 +412,73 @@ int generate_process( int fd_in, int fd_out, char*** prog )
 }
 
 
+
 /*********************************************************************/
 /*                                                                   */
-/*      Function name: count_pipes                                   */
+/*      Function name: generate_process_for_pipe                     */
 /*      Return type:   void                                          */
 /*      Parameter(s):  None                                          */
 /*                                                                   */
 /*      Description:                                                 */
-/*          counts occurences of pipes in cmds.                      */
+/*          creates a process and executes a program.                */
 /*                                                                   */
 /*********************************************************************/
-int count_pipes( void )
+int generate_process_for_pipe( int fd_in, int fd_out, char*** prog )
 {
-    int old_result;
-    int result = find_string( "|", &cmds, n_cmds );
-    int ctr = 0;
+    pid_t pgid = getpgrp();
+    pid_t pid; 
+    int status, w;
+    void (*istat)(int), (*qstat)(int);
 
-    while ( result != -1 )
+    printf( "Inside generate_process_for_pipe: \tfd_out = %d\tfd_in = %d\tprog = %s\n", fd_out, fd_in, (*prog)[0] );
+    /* if in child process */
+    if( ( pid = fork() ) == 0 )
     {
-        ctr++;
-        char** new_start = &cmds[result + 1];
+        puts( "inside child process..." );
+        printf("fd_in = %d\tfd_out = %d\n", fd_in, fd_out );
 
-        old_result = result; 
-        result = find_string( "|", &new_start, n_cmds - result - 1 ); 
-        result = ( result == -1 ? -1 : result + old_result + 1 );
-    }
-    return ctr;
+        /* if we are not directing to stdout, reassign output */
+        if ( fd_out != 1 )
+        {
+            dup2( fd_out, STDOUT_FILENO );
+            close( fd_out );
+        }
+
+        /* if we are not getting from stdin, reassign input. */
+        if ( fd_in != 0 )
+        {
+            printf( "Duping %d to stdin...", fd_in );
+            dup2( fd_in, STDIN_FILENO );
+            close( fd_in );
+        }
+
+        puts("attempting to execute..." );
+        return execvp( (*prog)[0], (*prog) );
+    } /* parent process */
+
+    /* set process group ID */
+    setpgid( pid, pgid );
+
+    /* ignore ctrl-c & ctrl-\ */
+    istat = signal(SIGINT, SIG_IGN);
+    qstat = signal(SIGQUIT, SIG_IGN);
+
+    /* close descriptors if necessary in parent */
+    //if ( fd_in != 0 )
+      //  close( fd_in );
+
+    //if ( fd_out != 1 )
+      //  close( fd_out );
+
+    /* wait for child processes to finish */
+    //while( ( w = wait( &status ) ) != pid && w != -1 )
+      //  continue;
+
+    /* allow for ctrl-c & ctrl-\ */
+    signal(SIGINT, istat);
+    signal(SIGQUIT, qstat);
+
+    return pid;
 }
 
 
