@@ -12,11 +12,12 @@
     // Cannot do redirection with echo...
 
 // NEXT STEPS:
-    // 1) figure out how to efficiently handle program execution in all its forms
-    // 2) implement it
+    // 1) Revise documentation to make sure every thing is accurate
+    // 2) figure out why shell sometimes takes 2 exits
     // 3) fix any ineffecient areas of the system
     // 4) add ability to read in permanent aliases from .j_profile
     // 5) add any other features you think of! :D
+    // 6) make sure memory leaks don't exist
 
 
 #include <stdio.h>
@@ -83,6 +84,7 @@ char*   get_parent_dir( int );
 int     set_new_dir( void );
 int     count_parents( const char* );
 char*   get_last_parent( const char* str );
+int     process_path( void );
 
 /* program execution function prototypes */
 int     handle_program_execution( void );
@@ -361,7 +363,10 @@ int handle_directory_change( void )
         if( is_directory( getenv( "HOME" ) ) != 0 )
         {
             if( chdir( getenv( "HOME" ) ) != 0 )
+            {
+                printf("Error: Cannot switch to HOME directory.\n" );
                 return FAILURE;
+            }
             else
             {
                 setenv( PWD, getenv( "HOME" ), 1 );
@@ -370,30 +375,11 @@ int handle_directory_change( void )
         }
     }
 
-    /* absolute path directory */
-    if ( cmds[1][0] == '/' )
+    /* switching to any other directory */
+    if ( chdir( cmds[1] ) != 0 )
     {
-        if ( is_directory( cmds[1] ) != 0 )
-        {
-            if ( chdir( cmds[1] ) != 0 )
-                return FAILURE;
-            else
-            {
-                setenv( PWD, cmds[1], 1 );
-                return SUCCESS;
-            }
-        }
-    }
-
-    /* relative path directory */ 
-    set_new_dir();
-
-    if ( is_directory( current_path ) != 0 )
-    {
-        if ( chdir( current_path ) != 0 )
-            return FAILURE;
-        else
-            setenv( PWD, current_path, 1 );
+        printf( "Error: Cannot change directory to %s\n", cmds[1] );
+        return FAILURE;
     }
 
     return SUCCESS;
@@ -550,155 +536,6 @@ int convert_env_var( int index )
     return SUCCESS;
 }
 
-
-/*********************************************************************/
-/*                                                                   */
-/*      Function name: get_parent_dir                                */
-/*      Return type:   char*                                         */
-/*      Parameter(s):  none                                          */
-/*                                                                   */
-/*      Description:                                                 */
-/*          returns path to parent directory from current directory. */
-/*                                                                   */
-/*********************************************************************/
-char* get_parent_dir( int n_par )
-{
-    char* path = getenv( PWD );
-    int end_parent = strlen( path ) - 1;
-    int num_par = 0;
-    char *parent_path = NULL;
-
-    for ( ; end_parent != 0; end_parent-- )
-    {
-        if ( num_par == n_par )
-            break;
-
-        if ( path[end_parent] == '/' )
-            num_par++; 
-    }
-
-    parent_path = (char*) malloc( ( end_parent + 2 ) * sizeof(char) );
-    
-    if ( parent_path == NULL )
-    {
-        fprintf( stderr, "Error allocating memory for parent path.\n" );
-        return NULL;
-    }
-
-    strncpy( parent_path, path, end_parent + 1 );
-    parent_path[end_parent + 1] = N_TERM;
-
-    return parent_path;
-} /* end get_parent_dir() */
-
-
-/*********************************************************************/
-/*                                                                   */
-/*      Function name: set_new_dir                                   */
-/*      Return type:   char*                                         */
-/*      Parameter(s):  none                                          */
-/*                                                                   */
-/*      Description:                                                 */
-/*          creates absolute path for new directory.                 */
-/*                                                                   */
-/*********************************************************************/
-
-// this funtion sometimes appends too many slashes, but it doesnt affect it. 
-// maybe create a separate function to assign current_path where I test for that stuff
-int set_new_dir( void )
-{
-    char* parent_dir = NULL;
-    int num_parents;
-
-    /* check if changing to home directory */
-    if ( cmds[1][0] == '~' )
-        sprintf( current_path, "%s/", getenv( "HOME" ) );
-    else
-        sprintf( current_path, "%s/", getenv( "PWD" ) );
-
-    /* append remaining path provided in command line */
-    if( strncmp( cmds[1], "~/", 2 ) == 0 ||
-        strncmp( cmds[1], "./", 2 ) == 0
-      )
-        strcat( current_path, &cmds[1][2] );
-    else
-        strcat( current_path, cmds[1] );
-
-    /* see if any parent directories (check for existence of '../') */
-    num_parents = count_parents( current_path );
-
-    /* if there are no parents to convert, return path */
-    if ( num_parents == 0 )
-        return SUCCESS;
-
-    /* get the index of the last parent within the string */
-    char* loc = get_last_parent( current_path );
-    long last_par_index = loc - current_path; 
-
-    /* get parent dir absolute path */
-    parent_dir = get_parent_dir( num_parents );
-
-    /* if no directories to append after parents */
-    if ( strlen( current_path ) - 2 == last_par_index )
-    {
-        sprintf( current_path, "%s/", parent_dir );
-        free( parent_dir );
-        return SUCCESS;
-    }
-
-    /* append any remaining directories after parents */
-    sprintf( current_path, "%s/%s", parent_dir, loc + 2 );
-
-    return SUCCESS;
-} /* end set_new_dir() */
-
-
-
-/*********************************************************************/
-/*                                                                   */
-/*      Function name: count_parents                                 */
-/*      Return type:   int                                           */
-/*      Parameter(s):                                                */
-/*          char* str: string to search.                             */
-/*                                                                   */
-/*      Description:                                                 */
-/*          calculates number of parents directories.                */
-/*                                                                   */
-/*********************************************************************/
-int count_parents( const char* str )
-{
-    char* loc = strstr( str, ".." );
-    if( loc == NULL )
-        return 0;
-
-    return 1 + count_parents( loc + 2 );
-} /* end count_parents */
-
-
-/*********************************************************************/
-/*                                                                   */
-/*      Function name: get_last_parent                               */
-/*      Return type:   int                                           */
-/*      Parameter(s):                                                */
-/*          char* str: string to search.                             */
-/*                                                                   */
-/*      Description:                                                 */
-/*          returns index of last parent (..) dir in str - 2         */
-/*                                                                   */
-/*********************************************************************/
-char* get_last_parent( const char* str )
-{
-    char* loc = strstr( str, ".." );
-    char* dummy = loc;
-
-    while( dummy != NULL )
-    {
-        loc = dummy; 
-        dummy = get_last_parent( loc + 2 );
-    }
-
-    return loc; 
-} /* end get_last_parent() */
 
 
 /*********************************************************************/

@@ -160,14 +160,14 @@ void redirect_input_and_output( void )
     /* ensure we found output file */
     if ( out_file_pos == -1 )
     {
-        fprintf( stderr, "Error: Could not find output file.\n" );
+        fprintf( stderr, "Error: Can't find output file.\n" );
         return; 
     }
 
     /* ensure we found input file */
     if ( in_file_pos == -1 )
     {
-        fprintf( stderr, "Error: Could not find input file.\n" );
+        fprintf( stderr, "Error: Can't find input file.\n" );
         return;
     }
 
@@ -220,13 +220,12 @@ void redirect_input_and_output( void )
 void execute_and_pipe( int n_pipes )
 {
     char** current_program = cmds;
-    int pipe_loc, n_full_cmds = n_pipes + 1, n_words = n_cmds;
+    int pipe_loc, n_words = n_cmds;
     pid_t pid, pgid = getpgrp();
     int i, pipe_fd[n_pipes][2];
     int status, w;
-    void (*istat)(int), (*qstat)(int);
 
-    /* create pipeline */
+    /* create first pipeline */
     if ( pipe( pipe_fd[0] ) == -1 )
     {
         /* error handling */
@@ -242,7 +241,7 @@ void execute_and_pipe( int n_pipes )
         /* check that we found pipe_loc */
         if ( pipe_loc == -1 && i != n_pipes - 1 )
         {
-            fprintf( stderr, "Error: Could not get location of next pipe.\n" );
+            fprintf( stderr, "Error: Can't get location of next pipe.\n" );
             return;
         }
 
@@ -286,9 +285,10 @@ void execute_and_pipe( int n_pipes )
             /* create child process */ 
             if( ( pid = fork() ) == 0 )
             {
-                /* set stdout of current cmd to write end of current pipe */
                 /* set stdin of current cmd to read end of previous pipe */
                 dup2( pipe_fd[i-1][READ_END], STDIN_FILENO );
+
+                /* set stdout of current cmd to write end of current pipe */
                 dup2( pipe_fd[i][WRITE_END], STDOUT_FILENO );
 
                 /* close all pipes in child now that its been duped */
@@ -304,7 +304,7 @@ void execute_and_pipe( int n_pipes )
             }
         }
 
-        /* adjust current_program to point to next cmd */
+        /* adjust current_program to point to next set of cmds */
         current_program = &current_program[pipe_loc + 1];
     }
 
