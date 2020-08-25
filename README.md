@@ -45,7 +45,11 @@ My version of the executable is available in the /bin directory if you would lik
 However all source code is available to the public to be modified however you please. General input/criticism
 is appreciated as I am always looking for ways to improve my craft. Enjoy!
 
-To compile:
+To use JShell, either:
+
+1. Download executable directly from ubin folder and run from housing directory. 
+
+OR
 
 1. Create a local copy of this repository in a macOS X or Linux environment (its own directory).
 2. Execute "make" command. 
